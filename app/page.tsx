@@ -1,4 +1,4 @@
-// app/page.tsx - Crystal Dreamscape 完全修正版
+// app/page.tsx - Crystal Dreamscape バランス調整版
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -23,7 +23,6 @@ export default function HomePage() {
   useEffect(() => {
     if (!scriptsLoaded) return;
 
-    // Three.jsの初期化
     const THREE = (window as any).THREE;
     if (!THREE) return;
 
@@ -41,9 +40,9 @@ export default function HomePage() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     camera.position.z = 50;
 
-    // 🌸 桜パーティクル作成（大きく・華やか・透明感）
+    // 🌸 桜パーティクル作成（コントラスト重視）
     const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 250; // 200 → 250に増量
+    const particlesCount = 200;
     const posArray = new Float32Array(particlesCount * 3);
     const colorArray = new Float32Array(particlesCount * 3);
     const sizeArray = new Float32Array(particlesCount);
@@ -52,39 +51,30 @@ export default function HomePage() {
     for(let i = 0; i < particlesCount; i++) {
       const i3 = i * 3;
       
-      // 位置（広範囲に配置）
       posArray[i3] = (Math.random() - 0.5) * 120;
-      posArray[i3 + 1] = Math.random() * 100 + 20; // 上から降る
+      posArray[i3 + 1] = Math.random() * 100 + 20;
       posArray[i3 + 2] = (Math.random() - 0.5) * 100;
       
-      // 🎨 パステルカラー（ピンク・紫・青・白）
+      // 🎨 明るい色のみ（背景とのコントラスト重視）
       const colorChoice = Math.random();
-      if(colorChoice < 0.35) {
-        // ソフトピンク
+      if(colorChoice < 0.4) {
+        // 明るいピンク
         colorArray[i3] = 1;
-        colorArray[i3 + 1] = 0.75;
-        colorArray[i3 + 2] = 0.85;
-      } else if(colorChoice < 0.65) {
-        // ラベンダー
-        colorArray[i3] = 0.85;
-        colorArray[i3 + 1] = 0.70;
-        colorArray[i3 + 2] = 0.95;
-      } else if(colorChoice < 0.85) {
-        // スカイブルー
-        colorArray[i3] = 0.70;
-        colorArray[i3 + 1] = 0.85;
-        colorArray[i3 + 2] = 1;
-      } else {
+        colorArray[i3 + 1] = 0.6;
+        colorArray[i3 + 2] = 0.8;
+      } else if(colorChoice < 0.7) {
         // ホワイト（輝き）
         colorArray[i3] = 1;
         colorArray[i3 + 1] = 1;
         colorArray[i3 + 2] = 1;
+      } else {
+        // ライトブルー
+        colorArray[i3] = 0.8;
+        colorArray[i3 + 1] = 0.9;
+        colorArray[i3 + 2] = 1;
       }
       
-      // サイズ（大きく・ランダム）
-      sizeArray[i] = Math.random() * 3 + 1.5; // 0.5 → 1.5-4.5
-      
-      // 落下速度（桜らしくゆっくり）
+      sizeArray[i] = Math.random() * 2.5 + 1.5;
       velocityArray[i] = Math.random() * 0.5 + 0.2;
     }
 
@@ -93,55 +83,39 @@ export default function HomePage() {
     particlesGeometry.setAttribute('size', new THREE.BufferAttribute(sizeArray, 1));
 
     const particlesMaterial = new THREE.PointsMaterial({
-      size: 2.5, // 0.5 → 2.5（大幅に拡大）
+      size: 2.0,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85, // 0.8 → 0.85（明るく）
+      opacity: 0.9, // 明瞭度アップ
       blending: THREE.AdditiveBlending,
       sizeAttenuation: true,
-      map: createSakuraTexture(), // 🌸 桜テクスチャ
+      map: createSakuraTexture(),
     });
 
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
 
-    // 🌸 桜テクスチャ作成
     function createSakuraTexture() {
       const canvas = document.createElement('canvas');
       canvas.width = 64;
       canvas.height = 64;
       const ctx = canvas.getContext('2d')!;
       
-      // 桜の花びら形状（5枚花びら）
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      for(let i = 0; i < 5; i++) {
-        const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-        const x = 32 + Math.cos(angle) * 20;
-        const y = 32 + Math.sin(angle) * 20;
-        if(i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      
-      // グラデーション（中心が明るい）
+      // 桜の花びら
       const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
       gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-      gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(0.4, 'rgba(255, 200, 230, 0.9)');
       gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 64, 64);
       
-      const texture = new THREE.CanvasTexture(canvas);
-      return texture;
+      return new THREE.CanvasTexture(canvas);
     }
 
-    // 🌟 環境光（全体を明るく）
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // 環境光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    // マウス追従（より滑らか）
     let mouseX = 0, mouseY = 0;
     let targetX = 0, targetY = 0;
     
@@ -151,37 +125,28 @@ export default function HomePage() {
     };
     document.addEventListener('mousemove', handleMouseMove);
 
-    // アニメーションループ（桜吹雪）
+    // アニメーションループ
     let animationId: number;
     const animate = () => {
       animationId = requestAnimationFrame(animate);
       
-      // マウス追従（スムーズ）
       mouseX += (targetX - mouseX) * 0.05;
       mouseY += (targetY - mouseY) * 0.05;
       
-      // パーティクル全体の回転（ゆっくり）
       particlesMesh.rotation.y += 0.0008;
       particlesMesh.rotation.x = mouseY * 0.3;
       particlesMesh.rotation.y += mouseX * 0.0005;
       
-      // 🌸 桜吹雪（落下 + 横揺れ）
       const positions = particlesMesh.geometry.attributes.position.array as Float32Array;
       const time = Date.now() * 0.001;
       
       for(let i = 0; i < particlesCount; i++) {
         const i3 = i * 3;
         
-        // Y軸落下（個別速度）
         positions[i3 + 1] -= velocityArray[i] * 0.15;
-        
-        // X軸横揺れ（風の表現）
         positions[i3] += Math.sin(time + i) * 0.02;
-        
-        // Z軸奥行き揺れ
         positions[i3 + 2] += Math.cos(time + i * 0.5) * 0.015;
         
-        // 画面下に落ちたら上にリセット
         if(positions[i3 + 1] < -50) {
           positions[i3 + 1] = 50 + Math.random() * 20;
           positions[i3] = (Math.random() - 0.5) * 120;
@@ -193,7 +158,6 @@ export default function HomePage() {
     };
     animate();
 
-    // リサイズ対応
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -201,7 +165,6 @@ export default function HomePage() {
     };
     window.addEventListener('resize', handleResize);
 
-    // クリーンアップ
     return () => {
       cancelAnimationFrame(animationId);
       document.removeEventListener('mousemove', handleMouseMove);
@@ -212,7 +175,6 @@ export default function HomePage() {
     };
   }, [scriptsLoaded]);
 
-  // 記事取得
   useEffect(() => {
     fetch('/api/articles')
       .then(res => res.json())
@@ -230,7 +192,6 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Three.js CDN */}
       <Script 
         src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
         strategy="beforeInteractive"
@@ -249,30 +210,38 @@ export default function HomePage() {
           --primary-purple: #C9A0DC;
           --primary-blue: #A5D8FF;
           --accent-pearl: #FFF5F7;
-          --text-dark: #2D1B4E;
           --text-light: #FFFFFF;
-          --glass-bg: rgba(255, 255, 255, 0.15);
-          --glass-border: rgba(255, 255, 255, 0.3);
+          --text-dark: #2D1B4E;
+          --glass-bg: rgba(255, 255, 255, 0.12);
+          --glass-border: rgba(255, 255, 255, 0.25);
         }
 
         body {
           font-family: 'Josefin Sans', sans-serif;
-          /* 🎨 明るいグラデーション背景（宝石感） */
+          /* 🎨 バランス背景（薄暗い宝石空間） */
           background: linear-gradient(135deg, 
-            #E8D5F2 0%,    /* ラベンダー */
-            #F5E6F0 25%,   /* ライトピンク */
-            #E6F3FF 50%,   /* スカイブルー */
-            #F8E8F5 75%,   /* パールピンク */
-            #E8D5F2 100%   /* ラベンダー */
+            #3D2B5C 0%,    /* ディープパープル */
+            #4A3368 20%,   /* ミディアムパープル */
+            #5C4A7A 40%,   /* ライトパープル */
+            #4A3368 60%,   /* ミディアムパープル */
+            #3D2B5C 80%,   /* ディープパープル */
+            #2E1F47 100%   /* ダークパープル */
           );
-          color: var(--text-dark);
+          background-size: 400% 400%;
+          animation: gradientShift 15s ease infinite;
+          color: var(--text-light);
           overflow-x: hidden;
           line-height: 1.6;
           min-height: 100vh;
           position: relative;
         }
 
-        /* 🌟 キラキラオーバーレイ（宝石の輝き） */
+        @keyframes gradientShift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        /* 🌟 キラキラオーバーレイ（控えめ） */
         body::before {
           content: '';
           position: fixed;
@@ -281,17 +250,17 @@ export default function HomePage() {
           width: 100%;
           height: 100%;
           background: 
-            radial-gradient(circle at 20% 30%, rgba(255, 183, 213, 0.3) 0%, transparent 50%),
-            radial-gradient(circle at 80% 70%, rgba(165, 216, 255, 0.3) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(201, 160, 220, 0.2) 0%, transparent 60%);
+            radial-gradient(circle at 20% 30%, rgba(255, 183, 213, 0.15) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(165, 216, 255, 0.12) 0%, transparent 40%),
+            radial-gradient(circle at 50% 50%, rgba(201, 160, 220, 0.1) 0%, transparent 50%);
           pointer-events: none;
           z-index: 1;
-          animation: shimmerOverlay 8s ease-in-out infinite;
+          animation: shimmerOverlay 10s ease-in-out infinite;
         }
 
         @keyframes shimmerOverlay {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 0.9; }
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
         }
 
         #canvas-3d {
@@ -304,21 +273,19 @@ export default function HomePage() {
           pointer-events: none;
         }
 
-        /* 🔮 ガラスモーフィズム強化 */
         .glass {
           background: var(--glass-bg);
-          backdrop-filter: blur(25px) saturate(180%);
-          -webkit-backdrop-filter: blur(25px) saturate(180%);
-          border: 2px solid var(--glass-border);
+          backdrop-filter: blur(20px) saturate(150%);
+          -webkit-backdrop-filter: blur(20px) saturate(150%);
+          border: 1.5px solid var(--glass-border);
           border-radius: 24px;
           box-shadow: 
-            0 8px 32px rgba(255, 183, 213, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            0 8px 32px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
           position: relative;
           overflow: hidden;
         }
 
-        /* 🌟 ガラスカードの輝きエフェクト */
         .glass::before {
           content: '';
           position: absolute;
@@ -329,10 +296,10 @@ export default function HomePage() {
           background: linear-gradient(
             45deg,
             transparent 30%,
-            rgba(255, 255, 255, 0.3) 50%,
+            rgba(255, 255, 255, 0.15) 50%,
             transparent 70%
           );
-          animation: glassShine 3s ease-in-out infinite;
+          animation: glassShine 4s ease-in-out infinite;
           pointer-events: none;
         }
 
@@ -356,10 +323,10 @@ export default function HomePage() {
           right: 0;
           z-index: 100;
           padding: 1.5rem 3rem;
-          background: rgba(255, 255, 255, 0.25);
+          background: rgba(61, 43, 92, 0.4);
           backdrop-filter: blur(15px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-          box-shadow: 0 4px 16px rgba(201, 160, 220, 0.2);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
 
         nav {
@@ -384,7 +351,7 @@ export default function HomePage() {
           background-clip: text;
           text-decoration: none;
           letter-spacing: 2px;
-          filter: drop-shadow(0 2px 4px rgba(201, 160, 220, 0.3));
+          filter: drop-shadow(0 2px 8px rgba(255, 183, 213, 0.5));
         }
 
         .nav-links {
@@ -394,17 +361,18 @@ export default function HomePage() {
         }
 
         .nav-links a {
-          color: var(--text-dark);
+          color: var(--text-light);
           text-decoration: none;
           font-weight: 600;
           font-size: 0.95rem;
           letter-spacing: 1px;
           transition: all 0.3s ease;
           position: relative;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .nav-links a:hover {
-          color: var(--primary-purple);
+          color: var(--primary-pink);
           transform: translateY(-2px);
         }
 
@@ -417,6 +385,7 @@ export default function HomePage() {
           height: 2px;
           background: linear-gradient(90deg, var(--primary-pink), var(--primary-purple));
           transition: width 0.3s ease;
+          box-shadow: 0 0 8px var(--primary-pink);
         }
 
         .nav-links a:hover::after {
@@ -440,21 +409,19 @@ export default function HomePage() {
           font-weight: 700;
           line-height: 1.1;
           margin-bottom: 2rem;
-          /* 🎨 パステルグラデーション（ゴールド削除） */
           background: linear-gradient(135deg, 
-            #FFB7D5 0%,    /* ソフトピンク */
-            #F5C2E7 20%,   /* ライトピンク */
-            #C9A0DC 40%,   /* ラベンダー */
-            #B8B4E8 60%,   /* パープル */
-            #A5D8FF 80%,   /* スカイブルー */
-            #D4E4FF 100%   /* ライトブルー */
+            #FFB7D5 0%,
+            #F5C2E7 25%,
+            #C9A0DC 50%,
+            #A5D8FF 75%,
+            #D4E4FF 100%
           );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          animation: shimmer 4s ease-in-out infinite;
+          animation: shimmer 5s ease-in-out infinite;
           background-size: 200% auto;
-          filter: drop-shadow(0 4px 8px rgba(201, 160, 220, 0.4));
+          filter: drop-shadow(0 4px 12px rgba(255, 183, 213, 0.6));
         }
 
         @keyframes shimmer {
@@ -466,10 +433,10 @@ export default function HomePage() {
           font-size: clamp(1.2rem, 2.5vw, 1.8rem);
           font-weight: 400;
           margin-bottom: 3rem;
-          color: var(--text-dark);
-          opacity: 0.85;
+          color: var(--text-light);
+          opacity: 0.9;
           letter-spacing: 1px;
-          text-shadow: 0 2px 4px rgba(255, 255, 255, 0.5);
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
 
         .hero-stats {
@@ -496,15 +463,16 @@ export default function HomePage() {
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          filter: drop-shadow(0 2px 4px rgba(201, 160, 220, 0.3));
+          filter: drop-shadow(0 4px 8px rgba(255, 183, 213, 0.6));
         }
 
         .stat-label {
           font-size: 0.9rem;
-          opacity: 0.75;
+          opacity: 0.8;
           margin-top: 0.5rem;
           letter-spacing: 1px;
-          color: var(--text-dark);
+          color: var(--text-light);
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
         }
 
         .blog-section {
@@ -526,15 +494,16 @@ export default function HomePage() {
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          filter: drop-shadow(0 2px 4px rgba(201, 160, 220, 0.3));
+          filter: drop-shadow(0 4px 8px rgba(255, 183, 213, 0.5));
         }
 
         .section-subtitle {
           text-align: center;
-          opacity: 0.75;
+          opacity: 0.85;
           margin-bottom: 4rem;
           font-size: 1.1rem;
-          color: var(--text-dark);
+          color: var(--text-light);
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
         }
 
         .articles-grid {
@@ -557,20 +526,21 @@ export default function HomePage() {
           top: 0;
           left: 0;
           right: 0;
-          height: 5px;
+          height: 4px;
           background: linear-gradient(90deg, 
             var(--primary-pink), 
             var(--primary-purple), 
             var(--primary-blue)
           );
           border-radius: 24px 24px 0 0;
+          box-shadow: 0 0 12px var(--primary-pink);
         }
 
         .article-card:hover {
           transform: translateY(-12px) scale(1.02);
           box-shadow: 
-            0 20px 60px rgba(255, 183, 213, 0.4),
-            0 8px 16px rgba(201, 160, 220, 0.3);
+            0 20px 60px rgba(255, 183, 213, 0.5),
+            0 8px 16px rgba(201, 160, 220, 0.4);
         }
 
         .article-platform {
@@ -585,53 +555,54 @@ export default function HomePage() {
           font-weight: 600;
           margin-bottom: 1rem;
           color: white;
-          box-shadow: 0 4px 12px rgba(201, 160, 220, 0.3);
+          box-shadow: 0 4px 12px rgba(201, 160, 220, 0.4);
         }
 
         .article-title {
           font-size: 1.4rem;
           font-weight: 700;
           margin-bottom: 1rem;
-          color: var(--primary-purple);
+          color: var(--primary-pink);
           line-height: 1.4;
-          text-shadow: 0 1px 2px rgba(201, 160, 220, 0.2);
+          text-shadow: 0 2px 4px rgba(255, 183, 213, 0.3);
         }
 
         .article-excerpt {
           font-size: 0.95rem;
-          opacity: 0.8;
+          opacity: 0.85;
           line-height: 1.7;
           margin-bottom: 1.5rem;
-          color: var(--text-dark);
+          color: var(--text-light);
         }
 
         .article-date {
           font-size: 0.85rem;
-          opacity: 0.6;
-          color: var(--text-dark);
+          opacity: 0.7;
+          color: var(--text-light);
         }
 
         .loading {
           text-align: center;
           padding: 3rem;
-          color: var(--primary-purple);
+          color: var(--primary-pink);
           font-size: 1.2rem;
         }
 
         footer {
           padding: 3rem 2rem;
           text-align: center;
-          border-top: 2px solid rgba(255, 255, 255, 0.3);
+          border-top: 1px solid rgba(255, 255, 255, 0.15);
           margin-top: 4rem;
           position: relative;
           z-index: 3;
-          background: rgba(255, 255, 255, 0.15);
+          background: rgba(61, 43, 92, 0.3);
           backdrop-filter: blur(10px);
-          color: var(--text-dark);
+          color: var(--text-light);
         }
 
         footer p {
-          opacity: 0.7;
+          opacity: 0.75;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
         }
 
         @media (max-width: 768px) {
@@ -658,7 +629,6 @@ export default function HomePage() {
         }
       `}</style>
 
-      {/* 3D Canvas */}
       <canvas id="canvas-3d"></canvas>
 
       <header>
