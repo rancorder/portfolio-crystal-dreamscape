@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/page.tsx - Crystal Dreamscape 完全修正版
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -38,66 +38,154 @@ export default function HomePage() {
       antialias: true 
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     camera.position.z = 50;
 
-    // パーティクル作成
+    // 🌸 桜パーティクル作成（大きく・華やか・透明感）
     const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 200;
+    const particlesCount = 250; // 200 → 250に増量
     const posArray = new Float32Array(particlesCount * 3);
     const colorArray = new Float32Array(particlesCount * 3);
+    const sizeArray = new Float32Array(particlesCount);
+    const velocityArray = new Float32Array(particlesCount);
 
-    for(let i = 0; i < particlesCount * 3; i += 3) {
-      posArray[i] = (Math.random() - 0.5) * 100;
-      posArray[i + 1] = (Math.random() - 0.5) * 100;
-      posArray[i + 2] = (Math.random() - 0.5) * 100;
+    for(let i = 0; i < particlesCount; i++) {
+      const i3 = i * 3;
       
+      // 位置（広範囲に配置）
+      posArray[i3] = (Math.random() - 0.5) * 120;
+      posArray[i3 + 1] = Math.random() * 100 + 20; // 上から降る
+      posArray[i3 + 2] = (Math.random() - 0.5) * 100;
+      
+      // 🎨 パステルカラー（ピンク・紫・青・白）
       const colorChoice = Math.random();
-      if(colorChoice < 0.33) {
-        colorArray[i] = 1; colorArray[i+1] = 0.72; colorArray[i+2] = 0.84; // Pink
-      } else if(colorChoice < 0.66) {
-        colorArray[i] = 0.79; colorArray[i+1] = 0.63; colorArray[i+2] = 0.86; // Purple
+      if(colorChoice < 0.35) {
+        // ソフトピンク
+        colorArray[i3] = 1;
+        colorArray[i3 + 1] = 0.75;
+        colorArray[i3 + 2] = 0.85;
+      } else if(colorChoice < 0.65) {
+        // ラベンダー
+        colorArray[i3] = 0.85;
+        colorArray[i3 + 1] = 0.70;
+        colorArray[i3 + 2] = 0.95;
+      } else if(colorChoice < 0.85) {
+        // スカイブルー
+        colorArray[i3] = 0.70;
+        colorArray[i3 + 1] = 0.85;
+        colorArray[i3 + 2] = 1;
       } else {
-        colorArray[i] = 0.65; colorArray[i+1] = 0.85; colorArray[i+2] = 1; // Blue
+        // ホワイト（輝き）
+        colorArray[i3] = 1;
+        colorArray[i3 + 1] = 1;
+        colorArray[i3 + 2] = 1;
       }
+      
+      // サイズ（大きく・ランダム）
+      sizeArray[i] = Math.random() * 3 + 1.5; // 0.5 → 1.5-4.5
+      
+      // 落下速度（桜らしくゆっくり）
+      velocityArray[i] = Math.random() * 0.5 + 0.2;
     }
 
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
     particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+    particlesGeometry.setAttribute('size', new THREE.BufferAttribute(sizeArray, 1));
 
     const particlesMaterial = new THREE.PointsMaterial({
-      size: 0.5,
+      size: 2.5, // 0.5 → 2.5（大幅に拡大）
       vertexColors: true,
       transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending
+      opacity: 0.85, // 0.8 → 0.85（明るく）
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+      map: createSakuraTexture(), // 🌸 桜テクスチャ
     });
 
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
 
-    // マウス追従
+    // 🌸 桜テクスチャ作成
+    function createSakuraTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d')!;
+      
+      // 桜の花びら形状（5枚花びら）
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      for(let i = 0; i < 5; i++) {
+        const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+        const x = 32 + Math.cos(angle) * 20;
+        const y = 32 + Math.sin(angle) * 20;
+        if(i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      
+      // グラデーション（中心が明るい）
+      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 64, 64);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    }
+
+    // 🌟 環境光（全体を明るく）
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    // マウス追従（より滑らか）
     let mouseX = 0, mouseY = 0;
+    let targetX = 0, targetY = 0;
+    
     const handleMouseMove = (e: MouseEvent) => {
-      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-      mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+      targetX = (e.clientX / window.innerWidth) * 2 - 1;
+      targetY = -(e.clientY / window.innerHeight) * 2 + 1;
     };
     document.addEventListener('mousemove', handleMouseMove);
 
-    // アニメーションループ
+    // アニメーションループ（桜吹雪）
     let animationId: number;
     const animate = () => {
       animationId = requestAnimationFrame(animate);
       
-      particlesMesh.rotation.y += 0.001;
-      particlesMesh.rotation.x += 0.0005;
-      particlesMesh.rotation.y += mouseX * 0.0005;
-      particlesMesh.rotation.x += mouseY * 0.0005;
+      // マウス追従（スムーズ）
+      mouseX += (targetX - mouseX) * 0.05;
+      mouseY += (targetY - mouseY) * 0.05;
       
+      // パーティクル全体の回転（ゆっくり）
+      particlesMesh.rotation.y += 0.0008;
+      particlesMesh.rotation.x = mouseY * 0.3;
+      particlesMesh.rotation.y += mouseX * 0.0005;
+      
+      // 🌸 桜吹雪（落下 + 横揺れ）
       const positions = particlesMesh.geometry.attributes.position.array as Float32Array;
-      for(let i = 1; i < positions.length; i += 3) {
-        positions[i] -= 0.02;
-        if(positions[i] < -50) positions[i] = 50;
+      const time = Date.now() * 0.001;
+      
+      for(let i = 0; i < particlesCount; i++) {
+        const i3 = i * 3;
+        
+        // Y軸落下（個別速度）
+        positions[i3 + 1] -= velocityArray[i] * 0.15;
+        
+        // X軸横揺れ（風の表現）
+        positions[i3] += Math.sin(time + i) * 0.02;
+        
+        // Z軸奥行き揺れ
+        positions[i3 + 2] += Math.cos(time + i * 0.5) * 0.015;
+        
+        // 画面下に落ちたら上にリセット
+        if(positions[i3 + 1] < -50) {
+          positions[i3 + 1] = 50 + Math.random() * 20;
+          positions[i3] = (Math.random() - 0.5) * 120;
+        }
       }
       particlesMesh.geometry.attributes.position.needsUpdate = true;
       
@@ -160,20 +248,50 @@ export default function HomePage() {
           --primary-pink: #FFB7D5;
           --primary-purple: #C9A0DC;
           --primary-blue: #A5D8FF;
-          --accent-gold: #FFD700;
+          --accent-pearl: #FFF5F7;
           --text-dark: #2D1B4E;
           --text-light: #FFFFFF;
-          --glass-bg: rgba(255, 255, 255, 0.1);
-          --glass-border: rgba(255, 255, 255, 0.2);
+          --glass-bg: rgba(255, 255, 255, 0.15);
+          --glass-border: rgba(255, 255, 255, 0.3);
         }
 
         body {
           font-family: 'Josefin Sans', sans-serif;
-          background: linear-gradient(135deg, #1a0933 0%, #2d1b4e 50%, #4a2c6d 100%);
-          color: var(--text-light);
+          /* 🎨 明るいグラデーション背景（宝石感） */
+          background: linear-gradient(135deg, 
+            #E8D5F2 0%,    /* ラベンダー */
+            #F5E6F0 25%,   /* ライトピンク */
+            #E6F3FF 50%,   /* スカイブルー */
+            #F8E8F5 75%,   /* パールピンク */
+            #E8D5F2 100%   /* ラベンダー */
+          );
+          color: var(--text-dark);
           overflow-x: hidden;
           line-height: 1.6;
           min-height: 100vh;
+          position: relative;
+        }
+
+        /* 🌟 キラキラオーバーレイ（宝石の輝き） */
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: 
+            radial-gradient(circle at 20% 30%, rgba(255, 183, 213, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(165, 216, 255, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(201, 160, 220, 0.2) 0%, transparent 60%);
+          pointer-events: none;
+          z-index: 1;
+          animation: shimmerOverlay 8s ease-in-out infinite;
+        }
+
+        @keyframes shimmerOverlay {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 0.9; }
         }
 
         #canvas-3d {
@@ -182,17 +300,45 @@ export default function HomePage() {
           left: 0;
           width: 100%;
           height: 100%;
-          z-index: 1;
+          z-index: 2;
           pointer-events: none;
         }
 
+        /* 🔮 ガラスモーフィズム強化 */
         .glass {
           background: var(--glass-bg);
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
-          border: 1px solid var(--glass-border);
+          backdrop-filter: blur(25px) saturate(180%);
+          -webkit-backdrop-filter: blur(25px) saturate(180%);
+          border: 2px solid var(--glass-border);
           border-radius: 24px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+          box-shadow: 
+            0 8px 32px rgba(255, 183, 213, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.5);
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* 🌟 ガラスカードの輝きエフェクト */
+        .glass::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: linear-gradient(
+            45deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.3) 50%,
+            transparent 70%
+          );
+          animation: glassShine 3s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        @keyframes glassShine {
+          0%, 100% { transform: translate(-100%, -100%); }
+          50% { transform: translate(100%, 100%); }
         }
 
         .container {
@@ -200,7 +346,7 @@ export default function HomePage() {
           margin: 0 auto;
           padding: 0 2rem;
           position: relative;
-          z-index: 2;
+          z-index: 3;
         }
 
         header {
@@ -210,9 +356,10 @@ export default function HomePage() {
           right: 0;
           z-index: 100;
           padding: 1.5rem 3rem;
-          background: rgba(42, 27, 78, 0.3);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.25);
+          backdrop-filter: blur(15px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+          box-shadow: 0 4px 16px rgba(201, 160, 220, 0.2);
         }
 
         nav {
@@ -227,12 +374,17 @@ export default function HomePage() {
           font-family: 'Cormorant Garamond', serif;
           font-size: 2rem;
           font-weight: 700;
-          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple), var(--primary-blue));
+          background: linear-gradient(135deg, 
+            var(--primary-pink), 
+            var(--primary-purple), 
+            var(--primary-blue)
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
           text-decoration: none;
           letter-spacing: 2px;
+          filter: drop-shadow(0 2px 4px rgba(201, 160, 220, 0.3));
         }
 
         .nav-links {
@@ -242,13 +394,33 @@ export default function HomePage() {
         }
 
         .nav-links a {
-          color: var(--text-light);
+          color: var(--text-dark);
           text-decoration: none;
           font-weight: 600;
           font-size: 0.95rem;
           letter-spacing: 1px;
           transition: all 0.3s ease;
           position: relative;
+        }
+
+        .nav-links a:hover {
+          color: var(--primary-purple);
+          transform: translateY(-2px);
+        }
+
+        .nav-links a::after {
+          content: '';
+          position: absolute;
+          bottom: -4px;
+          left: 0;
+          width: 0;
+          height: 2px;
+          background: linear-gradient(90deg, var(--primary-pink), var(--primary-purple));
+          transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+          width: 100%;
         }
 
         .hero {
@@ -259,7 +431,7 @@ export default function HomePage() {
           justify-content: center;
           padding: 8rem 2rem 4rem;
           text-align: center;
-          z-index: 2;
+          z-index: 3;
         }
 
         .hero-title {
@@ -268,12 +440,21 @@ export default function HomePage() {
           font-weight: 700;
           line-height: 1.1;
           margin-bottom: 2rem;
-          background: linear-gradient(135deg, #FFB7D5 0%, #C9A0DC 30%, #A5D8FF 60%, #FFD700 100%);
+          /* 🎨 パステルグラデーション（ゴールド削除） */
+          background: linear-gradient(135deg, 
+            #FFB7D5 0%,    /* ソフトピンク */
+            #F5C2E7 20%,   /* ライトピンク */
+            #C9A0DC 40%,   /* ラベンダー */
+            #B8B4E8 60%,   /* パープル */
+            #A5D8FF 80%,   /* スカイブルー */
+            #D4E4FF 100%   /* ライトブルー */
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          animation: shimmer 3s ease-in-out infinite;
+          animation: shimmer 4s ease-in-out infinite;
           background-size: 200% auto;
+          filter: drop-shadow(0 4px 8px rgba(201, 160, 220, 0.4));
         }
 
         @keyframes shimmer {
@@ -283,10 +464,12 @@ export default function HomePage() {
 
         .hero-subtitle {
           font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-          font-weight: 300;
+          font-weight: 400;
           margin-bottom: 3rem;
-          opacity: 0.9;
+          color: var(--text-dark);
+          opacity: 0.85;
           letter-spacing: 1px;
+          text-shadow: 0 2px 4px rgba(255, 255, 255, 0.5);
         }
 
         .hero-stats {
@@ -305,23 +488,29 @@ export default function HomePage() {
           font-family: 'Cormorant Garamond', serif;
           font-size: 3.5rem;
           font-weight: 700;
-          background: linear-gradient(135deg, var(--primary-pink), var(--accent-gold));
+          background: linear-gradient(135deg, 
+            var(--primary-pink), 
+            var(--primary-purple),
+            var(--primary-blue)
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+          filter: drop-shadow(0 2px 4px rgba(201, 160, 220, 0.3));
         }
 
         .stat-label {
           font-size: 0.9rem;
-          opacity: 0.8;
+          opacity: 0.75;
           margin-top: 0.5rem;
           letter-spacing: 1px;
+          color: var(--text-dark);
         }
 
         .blog-section {
           padding: 8rem 2rem;
           position: relative;
-          z-index: 2;
+          z-index: 3;
         }
 
         .section-title {
@@ -329,17 +518,23 @@ export default function HomePage() {
           font-size: clamp(2.5rem, 5vw, 4rem);
           text-align: center;
           margin-bottom: 2rem;
-          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+          background: linear-gradient(135deg, 
+            var(--primary-pink), 
+            var(--primary-purple),
+            var(--primary-blue)
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+          filter: drop-shadow(0 2px 4px rgba(201, 160, 220, 0.3));
         }
 
         .section-subtitle {
           text-align: center;
-          opacity: 0.8;
+          opacity: 0.75;
           margin-bottom: 4rem;
           font-size: 1.1rem;
+          color: var(--text-dark);
         }
 
         .articles-grid {
@@ -351,71 +546,92 @@ export default function HomePage() {
 
         .article-card {
           padding: 2.5rem;
-          transition: all 0.4s ease;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           cursor: pointer;
           position: relative;
-          overflow: hidden;
         }
 
-        .article-card::before {
+        .article-card::after {
           content: '';
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
-          height: 4px;
-          background: linear-gradient(90deg, var(--primary-pink), var(--primary-purple), var(--primary-blue));
+          height: 5px;
+          background: linear-gradient(90deg, 
+            var(--primary-pink), 
+            var(--primary-purple), 
+            var(--primary-blue)
+          );
+          border-radius: 24px 24px 0 0;
         }
 
         .article-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 16px 48px rgba(255, 183, 213, 0.3);
+          transform: translateY(-12px) scale(1.02);
+          box-shadow: 
+            0 20px 60px rgba(255, 183, 213, 0.4),
+            0 8px 16px rgba(201, 160, 220, 0.3);
         }
 
         .article-platform {
           display: inline-block;
-          padding: 0.4rem 1rem;
-          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+          padding: 0.5rem 1.2rem;
+          background: linear-gradient(135deg, 
+            var(--primary-pink), 
+            var(--primary-purple)
+          );
           border-radius: 20px;
           font-size: 0.8rem;
           font-weight: 600;
           margin-bottom: 1rem;
+          color: white;
+          box-shadow: 0 4px 12px rgba(201, 160, 220, 0.3);
         }
 
         .article-title {
-          font-size: 1.3rem;
+          font-size: 1.4rem;
           font-weight: 700;
           margin-bottom: 1rem;
-          color: var(--primary-pink);
+          color: var(--primary-purple);
           line-height: 1.4;
+          text-shadow: 0 1px 2px rgba(201, 160, 220, 0.2);
         }
 
         .article-excerpt {
           font-size: 0.95rem;
-          opacity: 0.85;
+          opacity: 0.8;
           line-height: 1.7;
           margin-bottom: 1.5rem;
+          color: var(--text-dark);
         }
 
         .article-date {
           font-size: 0.85rem;
           opacity: 0.6;
+          color: var(--text-dark);
         }
 
         .loading {
           text-align: center;
           padding: 3rem;
-          color: var(--primary-pink);
+          color: var(--primary-purple);
           font-size: 1.2rem;
         }
 
         footer {
           padding: 3rem 2rem;
           text-align: center;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: 2px solid rgba(255, 255, 255, 0.3);
           margin-top: 4rem;
           position: relative;
-          z-index: 2;
+          z-index: 3;
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(10px);
+          color: var(--text-dark);
+        }
+
+        footer p {
+          opacity: 0.7;
         }
 
         @media (max-width: 768px) {
@@ -434,6 +650,10 @@ export default function HomePage() {
 
           .articles-grid {
             grid-template-columns: 1fr;
+          }
+
+          .stat-number {
+            font-size: 2.5rem;
           }
         }
       `}</style>
@@ -513,8 +733,11 @@ export default function HomePage() {
       </main>
 
       <footer>
-        <p style={{ opacity: 0.6 }}>
+        <p>
           © 2025 AI Art Studio - Crystal Dreamscape. All rights reserved.
+        </p>
+        <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+          🌸 Powered by Next.js + Three.js + TypeScript
         </p>
       </footer>
     </>
