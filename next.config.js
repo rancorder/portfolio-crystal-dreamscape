@@ -1,31 +1,16 @@
-// next.config.js
+// next.config.js - Netlify最適化版
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  
+  // Netlify用の設定
+  // output: 'standalone' は使わない（Netlify Functionsと競合）
   
   // Image optimization
   images: {
     domains: ['zenn.dev', 'qiita.com', 'raw.githubusercontent.com'],
     formats: ['image/avif', 'image/webp'],
   },
-  
-  // CORS headers
-  async headers() {
-    return [
-      {
-        source: '/api/:path*',
-        headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' },
-        ],
-      },
-    ];
-  },
-  
-  // Netlify optimization
-  output: 'standalone',
   
   // Performance
   compress: true,
