@@ -1,4 +1,4 @@
-# netlify.toml
+# netlify.toml - Next.js App Router完全対応版
 [build]
   command = "npm run build"
   publish = ".next"
@@ -7,11 +7,18 @@
   NODE_VERSION = "18"
   NPM_VERSION = "9"
 
+# Next.js Functions（重要！）
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# API Routes のリライト
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+  force = true
 
+# CORS設定
 [[headers]]
   for = "/api/*"
   [headers.values]
