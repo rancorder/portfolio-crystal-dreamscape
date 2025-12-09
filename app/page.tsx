@@ -1,8 +1,7 @@
-// app/page.tsx - Crystal Dreamscape バランス調整版
+// app/page.tsx - Canvas API完全実装版
 'use client';
 
 import { useEffect, useState } from 'react';
-import Script from 'next/script';
 
 interface Article {
   id: string;
@@ -17,164 +16,152 @@ interface Article {
 export default function HomePage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scriptsLoaded, setScriptsLoaded] = useState(false);
 
-  // スクリプト読み込み完了後にThree.js初期化
+  // 🌸 Canvas桜吹雪エフェクト（Three.js不要）
   useEffect(() => {
-    if (!scriptsLoaded) return;
-
-    const THREE = (window as any).THREE;
-    if (!THREE) return;
-
-    const canvas = document.getElementById('canvas-3d') as HTMLCanvasElement;
+    const canvas = document.getElementById('canvas-sakura') as HTMLCanvasElement;
     if (!canvas) return;
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ 
-      canvas,
-      alpha: true,
-      antialias: true 
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    camera.position.z = 50;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
 
-    // 🌸 桜パーティクル作成（コントラスト重視）
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 200;
-    const posArray = new Float32Array(particlesCount * 3);
-    const colorArray = new Float32Array(particlesCount * 3);
-    const sizeArray = new Float32Array(particlesCount);
-    const velocityArray = new Float32Array(particlesCount);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    for(let i = 0; i < particlesCount; i++) {
-      const i3 = i * 3;
-      
-      posArray[i3] = (Math.random() - 0.5) * 120;
-      posArray[i3 + 1] = Math.random() * 100 + 20;
-      posArray[i3 + 2] = (Math.random() - 0.5) * 100;
-      
-      // 🎨 明るい色のみ（背景とのコントラスト重視）
-      const colorChoice = Math.random();
-      if(colorChoice < 0.4) {
-        // 明るいピンク
-        colorArray[i3] = 1;
-        colorArray[i3 + 1] = 0.6;
-        colorArray[i3 + 2] = 0.8;
-      } else if(colorChoice < 0.7) {
-        // ホワイト（輝き）
-        colorArray[i3] = 1;
-        colorArray[i3 + 1] = 1;
-        colorArray[i3 + 2] = 1;
-      } else {
-        // ライトブルー
-        colorArray[i3] = 0.8;
-        colorArray[i3 + 1] = 0.9;
-        colorArray[i3 + 2] = 1;
+    // 桜パーティクル定義
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      color: string;
+      alpha: number;
+      rotation: number;
+      rotationSpeed: number;
+    }
+
+    const particles: Particle[] = [];
+    const particleCount = 150;
+
+    // パーティクル生成
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: Math.random() * 1.5 + 0.5,
+        radius: Math.random() * 4 + 2,
+        color: getRandomColor(),
+        alpha: Math.random() * 0.5 + 0.5,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+      });
+    }
+
+    function getRandomColor(): string {
+      const colors = [
+        'rgba(255, 183, 213, ', // ピンク
+        'rgba(255, 255, 255, ',  // ホワイト
+        'rgba(201, 160, 220, ',  // ラベンダー
+        'rgba(165, 216, 255, ',  // スカイブルー
+      ];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    // 桜の花びら描画
+    function drawSakura(x: number, y: number, radius: number, color: string, alpha: number, rotation: number) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.globalAlpha = alpha;
+
+      // 5枚花びら
+      for (let i = 0; i < 5; i++) {
+        ctx.save();
+        ctx.rotate((Math.PI * 2 * i) / 5);
+        
+        // グラデーション
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+        gradient.addColorStop(0, color + '1)');
+        gradient.addColorStop(0.5, color + '0.8)');
+        gradient.addColorStop(1, color + '0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -radius * 0.3, radius * 0.6, radius, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
-      
-      sizeArray[i] = Math.random() * 2.5 + 1.5;
-      velocityArray[i] = Math.random() * 0.5 + 0.2;
+
+      ctx.restore();
     }
 
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
-    particlesGeometry.setAttribute('size', new THREE.BufferAttribute(sizeArray, 1));
-
-    const particlesMaterial = new THREE.PointsMaterial({
-      size: 2.0,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.9, // 明瞭度アップ
-      blending: THREE.AdditiveBlending,
-      sizeAttenuation: true,
-      map: createSakuraTexture(),
-    });
-
-    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(particlesMesh);
-
-    function createSakuraTexture() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 64;
-      canvas.height = 64;
-      const ctx = canvas.getContext('2d')!;
-      
-      // 桜の花びら
-      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-      gradient.addColorStop(0.4, 'rgba(255, 200, 230, 0.9)');
-      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 64, 64);
-      
-      return new THREE.CanvasTexture(canvas);
-    }
-
-    // 環境光
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-
-    let mouseX = 0, mouseY = 0;
-    let targetX = 0, targetY = 0;
+    // マウス追従
+    let mouseX = 0;
+    let mouseY = 0;
     
     const handleMouseMove = (e: MouseEvent) => {
-      targetX = (e.clientX / window.innerWidth) * 2 - 1;
-      targetY = -(e.clientY / window.innerHeight) * 2 + 1;
+      mouseX = e.clientX;
+      mouseY = e.clientY;
     };
     document.addEventListener('mousemove', handleMouseMove);
 
     // アニメーションループ
     let animationId: number;
-    const animate = () => {
-      animationId = requestAnimationFrame(animate);
-      
-      mouseX += (targetX - mouseX) * 0.05;
-      mouseY += (targetY - mouseY) * 0.05;
-      
-      particlesMesh.rotation.y += 0.0008;
-      particlesMesh.rotation.x = mouseY * 0.3;
-      particlesMesh.rotation.y += mouseX * 0.0005;
-      
-      const positions = particlesMesh.geometry.attributes.position.array as Float32Array;
-      const time = Date.now() * 0.001;
-      
-      for(let i = 0; i < particlesCount; i++) {
-        const i3 = i * 3;
-        
-        positions[i3 + 1] -= velocityArray[i] * 0.15;
-        positions[i3] += Math.sin(time + i) * 0.02;
-        positions[i3 + 2] += Math.cos(time + i * 0.5) * 0.015;
-        
-        if(positions[i3 + 1] < -50) {
-          positions[i3 + 1] = 50 + Math.random() * 20;
-          positions[i3] = (Math.random() - 0.5) * 120;
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, index) => {
+        // 位置更新（落下 + 横揺れ）
+        p.y += p.vy;
+        p.x += p.vx;
+        p.x += Math.sin(Date.now() * 0.001 + index) * 0.3;
+        p.rotation += p.rotationSpeed;
+
+        // マウス反応（近くのパーティクルが避ける）
+        const dx = mouseX - p.x;
+        const dy = mouseY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 100) {
+          p.x -= (dx / dist) * 2;
+          p.y -= (dy / dist) * 2;
         }
-      }
-      particlesMesh.geometry.attributes.position.needsUpdate = true;
-      
-      renderer.render(scene, camera);
-    };
+
+        // 画面下に落ちたらリセット
+        if (p.y > canvas.height + 50) {
+          p.y = -50;
+          p.x = Math.random() * canvas.width;
+        }
+
+        // 左右端の処理
+        if (p.x < -50) p.x = canvas.width + 50;
+        if (p.x > canvas.width + 50) p.x = -50;
+
+        // 描画
+        drawSakura(p.x, p.y, p.radius, p.color, p.alpha, p.rotation);
+      });
+
+      animationId = requestAnimationFrame(animate);
+    }
     animate();
 
+    // リサイズ対応
     const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     };
     window.addEventListener('resize', handleResize);
 
+    // クリーンアップ
     return () => {
       cancelAnimationFrame(animationId);
       document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      particlesGeometry.dispose();
-      particlesMaterial.dispose();
     };
-  }, [scriptsLoaded]);
+  }, []);
 
+  // 記事取得
   useEffect(() => {
     fetch('/api/articles')
       .then(res => res.json())
@@ -192,12 +179,6 @@ export default function HomePage() {
 
   return (
     <>
-      <Script 
-        src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
-        strategy="beforeInteractive"
-        onLoad={() => setScriptsLoaded(true)}
-      />
-
       <style jsx global>{`
         * {
           margin: 0;
@@ -211,21 +192,19 @@ export default function HomePage() {
           --primary-blue: #A5D8FF;
           --accent-pearl: #FFF5F7;
           --text-light: #FFFFFF;
-          --text-dark: #2D1B4E;
           --glass-bg: rgba(255, 255, 255, 0.12);
           --glass-border: rgba(255, 255, 255, 0.25);
         }
 
         body {
           font-family: 'Josefin Sans', sans-serif;
-          /* 🎨 バランス背景（薄暗い宝石空間） */
           background: linear-gradient(135deg, 
-            #3D2B5C 0%,    /* ディープパープル */
-            #4A3368 20%,   /* ミディアムパープル */
-            #5C4A7A 40%,   /* ライトパープル */
-            #4A3368 60%,   /* ミディアムパープル */
-            #3D2B5C 80%,   /* ディープパープル */
-            #2E1F47 100%   /* ダークパープル */
+            #3D2B5C 0%,
+            #4A3368 20%,
+            #5C4A7A 40%,
+            #4A3368 60%,
+            #3D2B5C 80%,
+            #2E1F47 100%
           );
           background-size: 400% 400%;
           animation: gradientShift 15s ease infinite;
@@ -233,7 +212,6 @@ export default function HomePage() {
           overflow-x: hidden;
           line-height: 1.6;
           min-height: 100vh;
-          position: relative;
         }
 
         @keyframes gradientShift {
@@ -241,7 +219,6 @@ export default function HomePage() {
           50% { background-position: 100% 50%; }
         }
 
-        /* 🌟 キラキラオーバーレイ（控えめ） */
         body::before {
           content: '';
           position: fixed;
@@ -263,7 +240,7 @@ export default function HomePage() {
           50% { opacity: 0.8; }
         }
 
-        #canvas-3d {
+        #canvas-sakura {
           position: fixed;
           top: 0;
           left: 0;
@@ -629,7 +606,8 @@ export default function HomePage() {
         }
       `}</style>
 
-      <canvas id="canvas-3d"></canvas>
+      {/* Canvas桜吹雪 */}
+      <canvas id="canvas-sakura"></canvas>
 
       <header>
         <nav>
@@ -707,7 +685,7 @@ export default function HomePage() {
           © 2025 AI Art Studio - Crystal Dreamscape. All rights reserved.
         </p>
         <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-          🌸 Powered by Next.js + Three.js + TypeScript
+          🌸 Powered by Next.js + Canvas API + TypeScript
         </p>
       </footer>
     </>
