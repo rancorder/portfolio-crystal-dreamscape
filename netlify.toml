@@ -6,6 +6,8 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+  # デバッグログ有効化
+  NEXT_DEBUG = "true"
 
 # Next.js Functions（重要！）
 [[plugins]]
