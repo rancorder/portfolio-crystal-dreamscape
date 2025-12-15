@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Crystal Dreamscape - Next.js Portfolio',
-  description: 'プロデューサーひで×三姉妹 | Next.js実績多数 | Zenn/Qiita自動更新システム',
+  description: 'プロデューサー　rancorder | Next.js実績多数 | Zenn/Qiita/note 自動更新システム',
   keywords: ['Next.js', 'React', 'TypeScript', 'Portfolio', 'Frontend'],
 }
 
