@@ -3,9 +3,6 @@
 const nextConfig = {
   reactStrictMode: true,
   
-  // Netlify用の設定
-  // output: 'standalone' は使わない（Netlify Functionsと競合）
-  
   // Image optimization
   images: {
     domains: ['zenn.dev', 'qiita.com', 'raw.githubusercontent.com'],
@@ -24,6 +21,13 @@ const nextConfig = {
   // ESLint
   eslint: {
     ignoreDuringBuilds: false,
+  },
+  
+  // Logging
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
   },
 };
 
