@@ -1,8 +1,7 @@
-// app/page.tsx - エンタープライズグレード季節システム統合版
+// app/page.tsx - SEO最適化版
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSeasonalCanvas } from '@/lib/seasonal/use-seasonal-canvas';
 
 interface Article {
   id: string;
@@ -17,15 +16,140 @@ export default function HomePage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🌸 季節エフェクトシステム（自動切り替え）
-  const { currentSeason, seasonConfig } = useSeasonalCanvas('canvas-seasonal');
+  // 🌸 Canvas桜吹雪エフェクト
+  useEffect(() => {
+    const canvas = document.getElementById('canvas-sakura') as HTMLCanvasElement;
+    if (!canvas) return;
 
-  // 記事取得（Zenn + Qiita + note）
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      color: string;
+      alpha: number;
+      rotation: number;
+      rotationSpeed: number;
+    }
+
+    const particles: Particle[] = [];
+    const particleCount = 150;
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: Math.random() * 1.5 + 0.5,
+        radius: Math.random() * 4 + 2,
+        color: getRandomColor(),
+        alpha: Math.random() * 0.5 + 0.5,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+      });
+    }
+
+    function getRandomColor(): string {
+      const colors = [
+        'rgba(255, 183, 213, ',
+        'rgba(255, 255, 255, ',
+        'rgba(201, 160, 220, ',
+        'rgba(165, 216, 255, ',
+      ];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function drawSakura(x: number, y: number, radius: number, color: string, alpha: number, rotation: number) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.globalAlpha = alpha;
+
+      for (let i = 0; i < 5; i++) {
+        ctx.save();
+        ctx.rotate((Math.PI * 2 * i) / 5);
+        
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+        gradient.addColorStop(0, color + '1)');
+        gradient.addColorStop(0.5, color + '0.8)');
+        gradient.addColorStop(1, color + '0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -radius * 0.3, radius * 0.6, radius, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    let mouseX = 0;
+    let mouseY = 0;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+
+    let animationId: number;
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, index) => {
+        p.y += p.vy;
+        p.x += p.vx;
+        p.x += Math.sin(Date.now() * 0.001 + index) * 0.3;
+        p.rotation += p.rotationSpeed;
+
+        const dx = mouseX - p.x;
+        const dy = mouseY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 100) {
+          p.x -= (dx / dist) * 2;
+          p.y -= (dy / dist) * 2;
+        }
+
+        if (p.y > canvas.height + 50) {
+          p.y = -50;
+          p.x = Math.random() * canvas.width;
+        }
+
+        if (p.x < -50) p.x = canvas.width + 50;
+        if (p.x > canvas.width + 50) p.x = -50;
+
+        drawSakura(p.x, p.y, p.radius, p.color, p.alpha, p.rotation);
+      });
+
+      animationId = requestAnimationFrame(animate);
+    }
+    animate();
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      document.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // 記事取得
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        console.log('[Client] Fetching articles...');
-        
         const fetchers = [
           fetchQiita('rancorder'),
           fetchViaProxy('https://zenn.dev/supermassu/feed', 'Zenn'),
@@ -42,7 +166,6 @@ export default function HomePage() {
           new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
         );
         
-        console.log(`[Client] Loaded ${sorted.length} items`);
         setArticles(sorted);
         setLoading(false);
       } catch (error) {
@@ -54,7 +177,6 @@ export default function HomePage() {
     fetchArticles();
   }, []);
 
-  // Qiita取得（直接）
   async function fetchQiita(username: string): Promise<Article[]> {
     try {
       const res = await fetch(`https://qiita.com/api/v2/users/${username}/items?per_page=10`);
@@ -69,12 +191,10 @@ export default function HomePage() {
         platform: 'Qiita' as const,
       }));
     } catch (error) {
-      console.error('[Qiita] Error:', error);
       return [];
     }
   }
 
-  // RSS→JSONプロキシ経由取得
   async function fetchViaProxy(rssUrl: string, platform: 'Zenn' | 'note'): Promise<Article[]> {
     try {
       const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
@@ -102,12 +222,10 @@ export default function HomePage() {
         };
       });
     } catch (error) {
-      console.error(`[${platform}] Error:`, error);
       return [];
     }
   }
 
-  // プラットフォーム別カラー
   const getPlatformColor = (platform: string) => {
     switch (platform) {
       case 'Zenn': return 'linear-gradient(135deg, #3EA8FF, #50C0FF)';
@@ -167,7 +285,7 @@ export default function HomePage() {
           z-index: 1;
         }
 
-        #canvas-seasonal {
+        #canvas-sakura {
           position: fixed;
           top: 0;
           left: 0;
@@ -225,21 +343,6 @@ export default function HomePage() {
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           letter-spacing: 2px;
-        }
-
-        .season-indicator {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 20px;
-          font-size: 0.9rem;
-          backdrop-filter: blur(10px);
-        }
-
-        .season-emoji {
-          font-size: 1.5rem;
         }
 
         .nav-links {
@@ -384,71 +487,62 @@ export default function HomePage() {
 
         @media (max-width: 768px) {
           .articles-grid { grid-template-columns: 1fr; }
-          .season-indicator { display: none; }
         }
       `}</style>
 
-      {/* 季節エフェクトCanvas */}
-      <canvas id="canvas-seasonal"></canvas>
+      <canvas id="canvas-sakura" aria-hidden="true"></canvas>
 
-      <header>
-        <nav>
+      <header role="banner">
+        <nav role="navigation" aria-label="メインナビゲーション">
           <div className="logo">Crystal Studio</div>
-          
-          {/* 季節インジケーター */}
-          {seasonConfig && (
-            <div className="season-indicator">
-              <span className="season-emoji">{seasonConfig.emoji}</span>
-              <span>{seasonConfig.name}</span>
-            </div>
-          )}
-          
           <ul className="nav-links">
             <li><a href="#home">Home</a></li>
             <li><a href="#blog">Blog</a></li>
-            <li><a href="https://github.com/rancorder" target="_blank">GitHub</a></li>
+            <li><a href="https://github.com/rancorder" target="_blank" rel="noopener noreferrer">GitHub</a></li>
           </ul>
         </nav>
       </header>
 
       <main>
-        <section id="home" className="hero">
+        <section id="home" className="hero" aria-labelledby="hero-title">
           <div>
-            <h1 className="hero-title">Crystal Dreamscape</h1>
+            <h1 id="hero-title" className="hero-title">Crystal Dreamscape</h1>
             <p className="hero-subtitle">
               プロデューサーひで × 三姉妹 | Next.js実績多数
             </p>
           </div>
         </section>
 
-        <section id="blog" className="blog-section">
+        <section id="blog" className="blog-section" aria-labelledby="blog-title">
           <div className="container">
-            <h2 className="section-title">Latest Tech Articles</h2>
+            <h2 id="blog-title" className="section-title">Latest Tech Articles</h2>
             <p className="section-subtitle">Zenn・Qiita・noteから自動取得</p>
             
             {loading ? (
-              <div className="loading">記事を読み込み中...</div>
+              <div className="loading" role="status" aria-live="polite">記事を読み込み中...</div>
             ) : (
-              <div className="articles-grid">
+              <div className="articles-grid" role="list">
                 {articles.length > 0 ? (
                   articles.map(article => (
-                    <div 
+                    <article 
                       key={article.id} 
                       className="article-card glass"
                       onClick={() => window.open(article.url, '_blank')}
+                      role="listitem"
                     >
                       <span 
                         className="article-platform"
                         style={{ background: getPlatformColor(article.platform) }}
+                        aria-label={`プラットフォーム: ${article.platform}`}
                       >
                         {article.platform}
                       </span>
                       <h3 className="article-title">{article.title}</h3>
                       <p className="article-excerpt">{article.excerpt}</p>
-                      <p className="article-date">
+                      <time className="article-date" dateTime={article.publishedAt}>
                         {new Date(article.publishedAt).toLocaleDateString('ja-JP')}
-                      </p>
-                    </div>
+                      </time>
+                    </article>
                   ))
                 ) : (
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.6 }}>
@@ -461,10 +555,10 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer>
+      <footer role="contentinfo">
         <p>© 2025 AI Art Studio - Crystal Dreamscape</p>
         <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-          🌸 Powered by Next.js + Seasonal Effect System
+          🌸 Powered by Next.js + Canvas API
         </p>
       </footer>
     </>
