@@ -16,11 +16,134 @@ export default function HomePage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🌸 Canvas桜吹雪（省略 - 既存と同じ）
+  // 🌸 Canvas桜吹雪エフェクト
   useEffect(() => {
     const canvas = document.getElementById('canvas-sakura') as HTMLCanvasElement;
     if (!canvas) return;
-    // ... 既存の桜エフェクトコード ...
+
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      color: string;
+      alpha: number;
+      rotation: number;
+      rotationSpeed: number;
+    }
+
+    const particles: Particle[] = [];
+    const particleCount = 150;
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: Math.random() * 1.5 + 0.5,
+        radius: Math.random() * 4 + 2,
+        color: getRandomColor(),
+        alpha: Math.random() * 0.5 + 0.5,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+      });
+    }
+
+    function getRandomColor(): string {
+      const colors = [
+        'rgba(255, 183, 213, ',
+        'rgba(255, 255, 255, ',
+        'rgba(201, 160, 220, ',
+        'rgba(165, 216, 255, ',
+      ];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function drawSakura(x: number, y: number, radius: number, color: string, alpha: number, rotation: number) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.globalAlpha = alpha;
+
+      for (let i = 0; i < 5; i++) {
+        ctx.save();
+        ctx.rotate((Math.PI * 2 * i) / 5);
+        
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+        gradient.addColorStop(0, color + '1)');
+        gradient.addColorStop(0.5, color + '0.8)');
+        gradient.addColorStop(1, color + '0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -radius * 0.3, radius * 0.6, radius, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    let mouseX = 0;
+    let mouseY = 0;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+
+    let animationId: number;
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, index) => {
+        p.y += p.vy;
+        p.x += p.vx;
+        p.x += Math.sin(Date.now() * 0.001 + index) * 0.3;
+        p.rotation += p.rotationSpeed;
+
+        const dx = mouseX - p.x;
+        const dy = mouseY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 100) {
+          p.x -= (dx / dist) * 2;
+          p.y -= (dy / dist) * 2;
+        }
+
+        if (p.y > canvas.height + 50) {
+          p.y = -50;
+          p.x = Math.random() * canvas.width;
+        }
+
+        if (p.x < -50) p.x = canvas.width + 50;
+        if (p.x > canvas.width + 50) p.x = -50;
+
+        drawSakura(p.x, p.y, p.radius, p.color, p.alpha, p.rotation);
+      });
+
+      animationId = requestAnimationFrame(animate);
+    }
+    animate();
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      document.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // 記事取得（CORS回避版）
@@ -147,11 +270,36 @@ export default function HomePage() {
           animation: gradientShift 15s ease infinite;
           color: var(--text-light);
           min-height: 100vh;
+          overflow-x: hidden;
         }
 
         @keyframes gradientShift {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
+        }
+
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: 
+            radial-gradient(circle at 20% 30%, rgba(255, 183, 213, 0.15) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(165, 216, 255, 0.12) 0%, transparent 40%);
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        #canvas-sakura {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 2;
+          pointer-events: none;
         }
 
         .glass {
