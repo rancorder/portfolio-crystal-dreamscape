@@ -1,4 +1,4 @@
-// app/page.tsx - Canvas API完全実装版
+// app/page.tsx - エラー表示機能追加版
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -13,9 +13,16 @@ interface Article {
   tags?: string[];
 }
 
+interface ApiError {
+  message: string;
+  timestamp: string;
+}
+
 export default function HomePage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // 🌸 Canvas桜吹雪エフェクト（Three.js不要）
   useEffect(() => {
@@ -161,20 +168,51 @@ export default function HomePage() {
     };
   }, []);
 
-  // 記事取得
+  // 記事取得（エラーハンドリング強化）
   useEffect(() => {
-    fetch('/api/articles')
-      .then(res => res.json())
-      .then(data => {
+    const fetchArticles = async () => {
+      try {
+        console.log('[Client] Fetching articles from /api/articles...');
+        const startTime = Date.now();
+        
+        const res = await fetch('/api/articles', {
+          cache: 'no-store', // ISRテスト時は強制リフレッシュ
+        });
+        
+        const duration = Date.now() - startTime;
+        console.log(`[Client] Response received in ${duration}ms`);
+        console.log('[Client] Response status:', res.status);
+        console.log('[Client] Response headers:', Object.fromEntries(res.headers.entries()));
+        
+        const data = await res.json();
+        console.log('[Client] Response data:', data);
+        
         if (data.success) {
+          console.log(`[Client] Successfully loaded ${data.articles.length} articles`);
           setArticles(data.articles);
+          setDebugInfo(`✅ 記事取得成功: ${data.articles.length}件 (${duration}ms)`);
+        } else {
+          console.error('[Client] API returned success=false:', data.error);
+          setError({
+            message: data.error || 'API returned error',
+            timestamp: data.timestamp,
+          });
+          setDebugInfo(`❌ API Error: ${data.error}`);
         }
+        
         setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error:', error);
+      } catch (err) {
+        console.error('[Client] Fetch error:', err);
+        setError({
+          message: err instanceof Error ? err.message : 'Unknown fetch error',
+          timestamp: new Date().toISOString(),
+        });
+        setDebugInfo(`❌ Fetch Error: ${err instanceof Error ? err.message : String(err)}`);
         setLoading(false);
-      });
+      }
+    };
+
+    fetchArticles();
   }, []);
 
   return (
@@ -483,6 +521,41 @@ export default function HomePage() {
           text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
         }
 
+        .debug-info {
+          text-align: center;
+          padding: 1rem 2rem;
+          margin: 2rem auto;
+          max-width: 800px;
+          background: rgba(255, 183, 213, 0.1);
+          border: 1px solid rgba(255, 183, 213, 0.3);
+          border-radius: 12px;
+          font-family: 'Courier New', monospace;
+          font-size: 0.9rem;
+          color: var(--primary-pink);
+        }
+
+        .error-box {
+          text-align: center;
+          padding: 2rem;
+          margin: 2rem auto;
+          max-width: 800px;
+          background: rgba(255, 100, 100, 0.1);
+          border: 2px solid rgba(255, 100, 100, 0.4);
+          border-radius: 16px;
+          color: #FFB7D5;
+        }
+
+        .error-box h3 {
+          margin-bottom: 1rem;
+          font-size: 1.5rem;
+        }
+
+        .error-box p {
+          font-family: 'Courier New', monospace;
+          font-size: 0.9rem;
+          opacity: 0.9;
+        }
+
         .articles-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -650,6 +723,25 @@ export default function HomePage() {
             <h2 className="section-title">Latest Tech Articles</h2>
             <p className="section-subtitle">Zenn・Qiitaから自動取得（Next.js ISR実装）</p>
             
+            {/* デバッグ情報表示 */}
+            {debugInfo && (
+              <div className="debug-info">
+                {debugInfo}
+              </div>
+            )}
+            
+            {/* エラー表示 */}
+            {error && (
+              <div className="error-box">
+                <h3>🚨 記事取得エラー</h3>
+                <p><strong>Error:</strong> {error.message}</p>
+                <p><strong>Time:</strong> {new Date(error.timestamp).toLocaleString('ja-JP')}</p>
+                <p style={{ marginTop: '1rem', fontSize: '0.85rem', opacity: 0.7 }}>
+                  ブラウザのコンソールで詳細ログを確認してください
+                </p>
+              </div>
+            )}
+            
             {loading ? (
               <div className="loading">記事を読み込み中...</div>
             ) : (
@@ -670,9 +762,11 @@ export default function HomePage() {
                     </div>
                   ))
                 ) : (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.6 }}>
-                    記事が見つかりませんでした
-                  </div>
+                  !error && (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.6 }}>
+                      記事が見つかりませんでした
+                    </div>
+                  )
                 )}
               </div>
             )}
