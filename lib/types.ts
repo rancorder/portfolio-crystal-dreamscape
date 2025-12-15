@@ -5,7 +5,7 @@ export interface Article {
   url: string;
   excerpt: string;
   publishedAt: string;
-  platform: 'Zenn' | 'Qiita';
+  platform: 'Zenn' | 'Qiita' | 'GitHub' | 'note';
   tags?: string[];
 }
 
