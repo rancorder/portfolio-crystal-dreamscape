@@ -71,10 +71,9 @@ export const metadata: Metadata = {
     },
   },
   
-  // 検証タグ（後で追加）
+  // 検証タグ
   verification: {
-    // google: 'your-google-verification-code',
-    // yandex: 'your-yandex-verification-code',
+    google: 'T3NAi3rvxJmJt9qUHhaso0-TThffZpebX2TFJ8TwImM',
   },
   
   // アイコン
