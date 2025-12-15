@@ -33,7 +33,7 @@ export default function HomePage() {
           fetchZenn('supermassu'),
           fetchQiita('rancorder'),
           fetchGitHub('rancorder'), // ← GitHub追加
-          fetchNote('your-note-username'), // ← note追加（あなたのnoteユーザー名に変更）
+          fetchNote('rancorder'), // ← note追加（あなたのnoteユーザー名に変更）
         ];
         
         const results = await Promise.allSettled(fetchers);
@@ -98,6 +98,54 @@ export default function HomePage() {
       }));
     } catch (error) {
       console.error('[Qiita] Error:', error);
+      return [];
+    }
+  }
+
+  // GitHub Activity取得
+  async function fetchGitHub(username: string): Promise<Article[]> {
+    try {
+      const res = await fetch(`https://api.github.com/users/${username}/events/public`);
+      const events = await res.json();
+      
+      return events.slice(0, 10).map((event: any) => {
+        let title = '';
+        let excerpt = '';
+        
+        switch (event.type) {
+          case 'PushEvent':
+            const commits = event.payload.commits?.length || 0;
+            title = `📝 ${commits} commits to ${event.repo.name.split('/')[1]}`;
+            excerpt = event.payload.commits?.[0]?.message || 'Code update';
+            break;
+          case 'CreateEvent':
+            title = `🎉 Created ${event.payload.ref_type}: ${event.repo.name}`;
+            excerpt = 'New repository or branch';
+            break;
+          case 'PullRequestEvent':
+            title = `🔀 ${event.payload.pull_request.title}`;
+            excerpt = 'Pull request';
+            break;
+          case 'WatchEvent':
+            title = `⭐ Starred ${event.repo.name}`;
+            excerpt = 'Repository starred';
+            break;
+          default:
+            title = `${event.type.replace('Event', '')} on ${event.repo.name}`;
+            excerpt = 'GitHub activity';
+        }
+        
+        return {
+          id: event.id,
+          title,
+          url: `https://github.com/${event.repo.name}`,
+          excerpt: excerpt.substring(0, 150),
+          publishedAt: event.created_at,
+          platform: 'GitHub' as const,
+        };
+      });
+    } catch (error) {
+      console.error('[GitHub] Error:', error);
       return [];
     }
   }
