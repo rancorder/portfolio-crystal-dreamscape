@@ -1,4 +1,4 @@
-// app/layout.tsx - SEO完全最適化版
+// app/layout.tsx - Google認証完全対応版
 import type { Metadata } from 'next'
 import Script from 'next/script'
 
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     },
   },
   
-  // 検証タグ
+  // Google Search Console 検証
   verification: {
     google: 'T3NAi3rvxJmJt9qUHhaso0-TThffZpebX2TFJ8TwImM',
   },
@@ -101,7 +101,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <head>
+      <body style={{ margin: 0, padding: 0 }}>
+        {/* Google Fonts */}
         <link
           href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=Josefin+Sans:wght@300;400;600;700&display=swap"
           rel="stylesheet"
@@ -157,8 +158,7 @@ export default function RootLayout({
             }),
           }}
         />
-      </head>
-      <body style={{ margin: 0, padding: 0 }}>
+        
         {children}
       </body>
     </html>
