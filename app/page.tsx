@@ -10,6 +10,7 @@ interface Article {
   excerpt: string;
   publishedAt: string;
   platform: 'Zenn' | 'Qiita' | 'note';
+  thumbnail?: string; // サムネイル画像URL
 }
 
 export default function HomePage() {
@@ -193,6 +194,7 @@ export default function HomePage() {
         excerpt: item.body.substring(0, 150) + '...',
         publishedAt: item.created_at,
         platform: 'Qiita' as const,
+        thumbnail: item.user?.profile_image_url || undefined, // サムネイル
       }));
     } catch (error) {
       console.error('[Qiita] Error:', error);
@@ -218,6 +220,20 @@ export default function HomePage() {
           .replace(/&nbsp;/g, ' ')
           .trim();
         
+        // サムネイル画像を抽出
+        let thumbnail: string | undefined;
+        if (item.thumbnail) {
+          thumbnail = item.thumbnail;
+        } else if (item.enclosure?.link) {
+          thumbnail = item.enclosure.link;
+        } else if (item.description) {
+          // descriptionから最初の画像を抽出
+          const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
+          if (imgMatch) {
+            thumbnail = imgMatch[1];
+          }
+        }
+        
         return {
           id: `${platform.toLowerCase()}-${i}`,
           title: item.title || 'No Title',
@@ -225,6 +241,7 @@ export default function HomePage() {
           excerpt: cleanDescription.substring(0, 150) + (cleanDescription.length > 150 ? '...' : ''),
           publishedAt: item.pubDate || new Date().toISOString(),
           platform,
+          thumbnail,
         };
       });
     } catch (error) {
@@ -448,6 +465,26 @@ export default function HomePage() {
           box-shadow: 0 20px 60px rgba(255, 183, 213, 0.5);
         }
 
+        .article-thumbnail {
+          width: 100%;
+          height: 200px;
+          margin-bottom: 1.5rem;
+          border-radius: 16px;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .article-thumbnail img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.4s ease;
+        }
+
+        .article-card:hover .article-thumbnail img {
+          transform: scale(1.05);
+        }
+
         .article-platform {
           display: inline-block;
           padding: 0.5rem 1.2rem;
@@ -501,6 +538,12 @@ export default function HomePage() {
           
           .article-card {
             padding: 1.5rem;
+          }
+          
+          .article-thumbnail {
+            height: 150px;
+            margin-bottom: 1rem;
+            border-radius: 12px;
           }
           
           .article-title {
@@ -589,6 +632,15 @@ export default function HomePage() {
                       className="article-card glass"
                       onClick={() => window.open(article.url, '_blank')}
                     >
+                      {article.thumbnail && (
+                        <div className="article-thumbnail">
+                          <img 
+                            src={article.thumbnail} 
+                            alt={article.title}
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
                       <span 
                         className="article-platform"
                         style={{ background: getPlatformColor(article.platform) }}
