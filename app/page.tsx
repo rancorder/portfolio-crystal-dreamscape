@@ -353,6 +353,8 @@ export default function HomePage() {
           padding: 0 2rem;
           position: relative;
           z-index: 3;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         header {
@@ -466,9 +468,10 @@ export default function HomePage() {
 
         .articles-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
           gap: 2.5rem;
           margin-top: 4rem;
+          width: 100%;
         }
 
         .article-card {
@@ -477,6 +480,8 @@ export default function HomePage() {
           cursor: pointer;
           overflow: hidden;
           position: relative;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .article-card:hover {
@@ -558,11 +563,13 @@ export default function HomePage() {
           .articles-grid { 
             grid-template-columns: 1fr;
             gap: 1.5rem;
+            margin-top: 2rem;
           }
           
           .article-card {
-            padding: 1.2rem;
+            padding: 1rem;
             overflow: hidden;
+            width: 100%;
           }
           
           .article-thumbnail {
@@ -598,6 +605,7 @@ export default function HomePage() {
           
           .container {
             padding: 0 1rem;
+            width: 100%;
           }
           
           .blog-section {
