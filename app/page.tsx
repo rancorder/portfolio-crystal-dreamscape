@@ -475,6 +475,8 @@ export default function HomePage() {
           padding: 2.5rem;
           transition: all 0.4s ease;
           cursor: pointer;
+          overflow: hidden;
+          position: relative;
         }
 
         .article-card:hover {
@@ -517,10 +519,12 @@ export default function HomePage() {
           font-weight: 700;
           margin-bottom: 1rem;
           color: var(--primary-pink);
-          line-height: 1.4;
+          line-height: 1.5;
           word-break: break-word;
           overflow-wrap: break-word;
           hyphens: auto;
+          max-width: 100%;
+          white-space: normal;
         }
 
         .article-excerpt {
@@ -557,7 +561,8 @@ export default function HomePage() {
           }
           
           .article-card {
-            padding: 1.5rem;
+            padding: 1.2rem;
+            overflow: hidden;
           }
           
           .article-thumbnail {
@@ -567,11 +572,12 @@ export default function HomePage() {
           }
           
           .article-title {
-            font-size: 1.1rem;
+            font-size: 1rem;
             margin-bottom: 0.8rem;
-            line-height: 1.5;
+            line-height: 1.6;
             word-break: break-word;
             overflow-wrap: break-word;
+            max-width: 100%;
           }
           
           .article-excerpt {
