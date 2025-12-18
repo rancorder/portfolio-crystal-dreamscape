@@ -327,6 +327,72 @@ export default function HomePage() {
           z-index: 1;
         }
 
+        /* 冬の装飾 */
+        body::after {
+          content: '⛄';
+          position: fixed;
+          bottom: 5%;
+          right: 5%;
+          font-size: 8rem;
+          opacity: 0.15;
+          pointer-events: none;
+          z-index: 1;
+          animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+
+        /* 追加の雪だるま（左上） */
+        .winter-decoration-left {
+          position: fixed;
+          top: 10%;
+          left: 3%;
+          font-size: 6rem;
+          opacity: 0.12;
+          pointer-events: none;
+          z-index: 1;
+          animation: float 8s ease-in-out infinite;
+          animation-delay: 1s;
+        }
+
+        /* 冬の木（右中央） */
+        .winter-decoration-tree {
+          position: fixed;
+          top: 50%;
+          right: 2%;
+          font-size: 5rem;
+          opacity: 0.1;
+          pointer-events: none;
+          z-index: 1;
+          animation: float 7s ease-in-out infinite;
+          animation-delay: 2s;
+        }
+
+        /* モバイルでは小さく */
+        @media (max-width: 768px) {
+          body::after {
+            font-size: 4rem;
+            bottom: 3%;
+            right: 3%;
+            opacity: 0.1;
+          }
+          
+          .winter-decoration-left {
+            font-size: 3rem;
+            top: 5%;
+            left: 2%;
+            opacity: 0.08;
+          }
+          
+          .winter-decoration-tree {
+            font-size: 2.5rem;
+            opacity: 0.08;
+          }
+        }
+
         #canvas-sakura {
           position: fixed;
           top: 0;
@@ -632,6 +698,10 @@ export default function HomePage() {
           }
         }
       `}</style>
+
+      {/* 冬の装飾 */}
+      <div className="winter-decoration-left">⛄</div>
+      <div className="winter-decoration-tree">🎄</div>
 
       <canvas id="canvas-sakura"></canvas>
 
