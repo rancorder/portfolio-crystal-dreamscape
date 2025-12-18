@@ -220,18 +220,35 @@ export default function HomePage() {
           .replace(/&nbsp;/g, ' ')
           .trim();
         
-        // サムネイル画像を抽出
+        // サムネイル画像を抽出（複数パターン対応）
         let thumbnail: string | undefined;
+        
+        // 1. thumbnail フィールド
         if (item.thumbnail) {
           thumbnail = item.thumbnail;
-        } else if (item.enclosure?.link) {
+        }
+        // 2. enclosure.link
+        else if (item.enclosure?.link) {
           thumbnail = item.enclosure.link;
-        } else if (item.description) {
-          // descriptionから最初の画像を抽出
-          const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/);
+        }
+        // 3. content から抽出（note用）
+        else if (item.content) {
+          const imgMatch = item.content.match(/<img[^>]+src=["']([^"']+)["']/i);
           if (imgMatch) {
             thumbnail = imgMatch[1];
           }
+        }
+        // 4. description から抽出
+        else if (item.description) {
+          const imgMatch = item.description.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch) {
+            thumbnail = imgMatch[1];
+          }
+        }
+        
+        // noteの場合、assets.st-note.comのURLを確認
+        if (platform === 'note' && thumbnail && !thumbnail.startsWith('http')) {
+          thumbnail = `https://assets.st-note.com${thumbnail}`;
         }
         
         return {
@@ -501,6 +518,9 @@ export default function HomePage() {
           margin-bottom: 1rem;
           color: var(--primary-pink);
           line-height: 1.4;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          hyphens: auto;
         }
 
         .article-excerpt {
@@ -549,6 +569,9 @@ export default function HomePage() {
           .article-title {
             font-size: 1.1rem;
             margin-bottom: 0.8rem;
+            line-height: 1.5;
+            word-break: break-word;
+            overflow-wrap: break-word;
           }
           
           .article-excerpt {
@@ -632,12 +655,16 @@ export default function HomePage() {
                       className="article-card glass"
                       onClick={() => window.open(article.url, '_blank')}
                     >
-                      {article.thumbnail && (
+                      {(article.thumbnail || article.platform === 'note') && (
                         <div className="article-thumbnail">
                           <img 
-                            src={article.thumbnail} 
+                            src={article.thumbnail || '/og-image.png'} 
                             alt={article.title}
                             loading="lazy"
+                            onError={(e) => {
+                              // 画像読み込み失敗時はOGP画像を表示
+                              e.currentTarget.src = '/og-image.png';
+                            }}
                           />
                         </div>
                       )}
