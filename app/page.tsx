@@ -523,6 +523,7 @@ export default function HomePage() {
           font-size: 1.4rem;
           font-weight: 700;
           margin-bottom: 1rem;
+          padding: 0 0.5rem;
           color: var(--primary-pink);
           line-height: 1.5;
           word-break: break-word;
@@ -537,11 +538,13 @@ export default function HomePage() {
           opacity: 0.85;
           line-height: 1.7;
           margin-bottom: 1.5rem;
+          padding: 0 0.5rem;
         }
 
         .article-date {
           font-size: 0.85rem;
           opacity: 0.7;
+          padding: 0 0.5rem;
         }
 
         .loading {
@@ -669,15 +672,14 @@ export default function HomePage() {
                       className="article-card glass"
                       onClick={() => window.open(article.url, '_blank')}
                     >
-                      {(article.thumbnail || article.platform === 'note') && (
+                      {(article.thumbnail && article.platform !== 'note') && (
                         <div className="article-thumbnail">
                           <img 
-                            src={article.thumbnail || '/og-image.png'} 
+                            src={article.thumbnail} 
                             alt={article.title}
                             loading="lazy"
                             onError={(e) => {
-                              // 画像読み込み失敗時はOGP画像を表示
-                              e.currentTarget.src = '/og-image.png';
+                              e.currentTarget.style.display = 'none';
                             }}
                           />
                         </div>
