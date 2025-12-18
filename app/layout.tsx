@@ -1,3 +1,4 @@
+// app/layout.tsx - 修正版
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Analytics } from '@/components/Analytics'
@@ -33,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
+        {/* Google Analytics 4 */}
         <Script
           strategy="afterInteractive"
           src="https://www.googletagmanager.com/gtag/js?id=G-74PCYJ4PPZ"
