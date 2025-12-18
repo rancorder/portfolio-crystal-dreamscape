@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { pageview } from '@/lib/analytics'
+import { pageview } from '../lib/analytics'
 
 /**
  * App Router用 ページビュー自動追跡コンポーネント
