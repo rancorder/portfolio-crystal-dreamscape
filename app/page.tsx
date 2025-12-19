@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import * as React from 'react';
 
 interface Article {
   id: string;
@@ -10,12 +11,122 @@ interface Article {
   excerpt: string;
   publishedAt: string;
   platform: 'Zenn' | 'Qiita' | 'note';
-  thumbnail?: string; // サムネイル画像URL
+  thumbnail?: string;
+  category?: string; // 自動判定カテゴリー
 }
 
 export default function HomePage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('全て');
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('全て');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // カテゴリー自動判定
+  const categorizeArticle = (article: Article): string => {
+    const text = (article.title + ' ' + article.excerpt).toLowerCase();
+    
+    // AI（最優先でチェック）
+    if (/ai|人工知能|機械学習|machine learning|深層学習|deep learning|llm|gpt|claude|chatgpt|gemini|openai|anthropic|transformer/.test(text)) {
+      return 'AI';
+    }
+    
+    // 画像生成
+    if (/画像生成|image generation|stable diffusion|midjourney|dall-e|dalle|画像ai|生成ai|text to image|img2img/.test(text)) {
+      return '画像生成';
+    }
+    
+    // プロンプト
+    if (/プロンプト|prompt|プロンプトエンジニアリング|prompt engineering|プロンプトデザイン|few-shot|zero-shot|chain of thought/.test(text)) {
+      return 'プロンプト';
+    }
+    
+    // フロントエンド
+    if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux/.test(text)) {
+      return 'フロントエンド';
+    }
+    
+    // バックエンド
+    if (/node\.?js|express|api|database|sql|mongodb|postgresql|graphql|backend|server|prisma|nest\.?js/.test(text)) {
+      return 'バックエンド';
+    }
+    
+    // インフラ
+    if (/docker|kubernetes|aws|gcp|azure|ci\/cd|terraform|github actions|vercel|netlify|deploy|infra/.test(text)) {
+      return 'インフラ';
+    }
+    
+    return 'その他';
+  };
+
+  // フィルタリング＆検索ロジック
+  const filteredArticles = React.useMemo(() => {
+    return articles
+      .map(article => ({
+        ...article,
+        category: categorizeArticle(article)
+      }))
+      .filter(article => {
+        // カテゴリーフィルター
+        if (selectedCategory !== '全て' && article.category !== selectedCategory) {
+          return false;
+        }
+        
+        // プラットフォームフィルター
+        if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) {
+          return false;
+        }
+        
+        // 検索フィルター
+        if (searchQuery.trim() !== '') {
+          const query = searchQuery.toLowerCase();
+          const matchTitle = article.title.toLowerCase().includes(query);
+          const matchExcerpt = article.excerpt.toLowerCase().includes(query);
+          if (!matchTitle && !matchExcerpt) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+  }, [articles, selectedCategory, selectedPlatform, searchQuery]);
+
+  // カテゴリー別記事数カウント
+  const categoryCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {
+      '全て': articles.length,
+      'AI': 0,
+      '画像生成': 0,
+      'プロンプト': 0,
+      'フロントエンド': 0,
+      'バックエンド': 0,
+      'インフラ': 0,
+      'その他': 0,
+    };
+    
+    articles.forEach(article => {
+      const category = categorizeArticle(article);
+      counts[category]++;
+    });
+    
+    return counts;
+  }, [articles]);
+
+  // プラットフォーム別記事数カウント
+  const platformCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {
+      '全て': articles.length,
+      'Zenn': 0,
+      'Qiita': 0,
+      'note': 0,
+    };
+    
+    articles.forEach(article => {
+      counts[article.platform]++;
+    });
+    
+    return counts;
+  }, [articles]);
 
   // 🌸 Canvas桜吹雪エフェクト
   useEffect(() => {
@@ -620,6 +731,93 @@ export default function HomePage() {
           font-size: 1.2rem;
         }
 
+        /* フィルターセクション */
+        .filter-section {
+          margin-bottom: 3rem;
+          padding: 2rem;
+          background: var(--glass-bg);
+          backdrop-filter: blur(20px) saturate(150%);
+          border: 1.5px solid var(--glass-border);
+          border-radius: 20px;
+        }
+
+        .filter-group {
+          margin-bottom: 1.5rem;
+        }
+
+        .filter-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .filter-label {
+          font-size: 0.9rem;
+          font-weight: 600;
+          margin-bottom: 0.8rem;
+          opacity: 0.85;
+          display: block;
+        }
+
+        .filter-buttons {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.8rem;
+        }
+
+        .filter-btn {
+          padding: 0.6rem 1.2rem;
+          border-radius: 20px;
+          border: 1.5px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text-light);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 0.9rem;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+          background: rgba(255, 183, 213, 0.3);
+          border-color: var(--primary-pink);
+          transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+          border-color: var(--primary-pink);
+          font-weight: 700;
+          box-shadow: 0 4px 15px rgba(255, 183, 213, 0.4);
+        }
+
+        .search-box {
+          width: 100%;
+          padding: 1rem 1.5rem;
+          border-radius: 25px;
+          border: 1.5px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text-light);
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          outline: none;
+        }
+
+        .search-box::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .search-box:focus {
+          border-color: var(--primary-pink);
+          background: rgba(255, 255, 255, 0.12);
+          box-shadow: 0 0 20px rgba(255, 183, 213, 0.3);
+        }
+
+        .results-count {
+          text-align: center;
+          margin-top: 1.5rem;
+          opacity: 0.7;
+          font-size: 0.95rem;
+        }
+
         footer {
           padding: 3rem 2rem;
           text-align: center;
@@ -696,6 +894,29 @@ export default function HomePage() {
           .nav-links a {
             font-size: 0.9rem;
           }
+
+          /* フィルターのモバイル対応 */
+          .filter-section {
+            padding: 1.5rem;
+          }
+
+          .filter-buttons {
+            gap: 0.6rem;
+          }
+
+          .filter-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+          }
+
+          .search-box {
+            padding: 0.8rem 1.2rem;
+            font-size: 0.9rem;
+          }
+
+          .filter-label {
+            font-size: 0.85rem;
+          }
         }
       `}</style>
 
@@ -734,9 +955,63 @@ export default function HomePage() {
             {loading ? (
               <div className="loading">記事を読み込み中...</div>
             ) : (
-              <div className="articles-grid">
-                {articles.length > 0 ? (
-                  articles.map(article => (
+              <>
+                {/* フィルターセクション */}
+                <div className="filter-section">
+                  {/* 検索ボックス */}
+                  <div className="filter-group">
+                    <label className="filter-label">🔍 記事を検索</label>
+                    <input
+                      type="text"
+                      className="search-box"
+                      placeholder="タイトルやキーワードで検索..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  {/* カテゴリーフィルター */}
+                  <div className="filter-group">
+                    <label className="filter-label">📂 カテゴリー</label>
+                    <div className="filter-buttons">
+                      {['全て', 'AI', '画像生成', 'プロンプト', 'フロントエンド', 'バックエンド', 'インフラ', 'その他'].map(category => (
+                        <button
+                          key={category}
+                          className={`filter-btn ${selectedCategory === category ? 'active' : ''}`}
+                          onClick={() => setSelectedCategory(category)}
+                        >
+                          {category} ({categoryCounts[category] || 0})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* プラットフォームフィルター */}
+                  <div className="filter-group">
+                    <label className="filter-label">🌐 プラットフォーム</label>
+                    <div className="filter-buttons">
+                      {['全て', 'Zenn', 'Qiita', 'note'].map(platform => (
+                        <button
+                          key={platform}
+                          className={`filter-btn ${selectedPlatform === platform ? 'active' : ''}`}
+                          onClick={() => setSelectedPlatform(platform)}
+                        >
+                          {platform} ({platformCounts[platform] || 0})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 検索結果数 */}
+                  <div className="results-count">
+                    {filteredArticles.length}件の記事を表示中
+                  </div>
+                </div>
+
+                {/* 記事一覧 */}
+                <div className="articles-grid">
+                  {filteredArticles.length > 0 ? (
+                    filteredArticles.map(article => (
                     <div 
                       key={article.id} 
                       className="article-card glass"
@@ -769,10 +1044,13 @@ export default function HomePage() {
                   ))
                 ) : (
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.6 }}>
-                    記事が見つかりませんでした
+                    {searchQuery || selectedCategory !== '全て' || selectedPlatform !== '全て' 
+                      ? '条件に一致する記事が見つかりませんでした' 
+                      : '記事が見つかりませんでした'}
                   </div>
                 )}
               </div>
+            </>
             )}
           </div>
         </section>
