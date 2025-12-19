@@ -41,6 +41,11 @@ export default function HomePage() {
       return 'プロンプト';
     }
     
+    // スクレイピング
+    if (/スクレイピング|scraping|クローリング|crawling|beautiful soup|beautifulsoup|scrapy|selenium|puppeteer|playwright|cheerio|web scraping|データ収集|データ抽出/.test(text)) {
+      return 'スクレイピング';
+    }
+    
     // フロントエンド
     if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux/.test(text)) {
       return 'フロントエンド';
@@ -98,6 +103,7 @@ export default function HomePage() {
       'AI': 0,
       '画像生成': 0,
       'プロンプト': 0,
+      'スクレイピング': 0,
       'フロントエンド': 0,
       'バックエンド': 0,
       'インフラ': 0,
@@ -974,7 +980,7 @@ export default function HomePage() {
                   <div className="filter-group">
                     <label className="filter-label">📂 カテゴリー</label>
                     <div className="filter-buttons">
-                      {['全て', 'AI', '画像生成', 'プロンプト', 'フロントエンド', 'バックエンド', 'インフラ', 'その他'].map(category => (
+                      {['全て', 'AI', '画像生成', 'プロンプト', 'スクレイピング', 'フロントエンド', 'バックエンド', 'インフラ', 'その他'].map(category => (
                         <button
                           key={category}
                           className={`filter-btn ${selectedCategory === category ? 'active' : ''}`}
