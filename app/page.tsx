@@ -719,9 +719,9 @@ export default function HomePage() {
       <main>
         <section id="home" className="hero">
           <div>
-            <h1 className="hero-title">Crystal Dreamscape</h1>
+            <h1 className="hero-title">rancorder テック記事 | 自動集約ブログ</h1>
             <p className="hero-subtitle">
-              プロデューサーひで × 三姉妹 | Next.js実績多数
+              Zenn・Qiita・note から自動収集 | Next.js ISR実装
             </p>
           </div>
         </section>
