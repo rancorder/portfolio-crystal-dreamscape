@@ -27,37 +27,37 @@ export default function HomePage() {
     const text = (article.title + ' ' + article.excerpt).toLowerCase();
     
     // AI（最優先でチェック）
-    if (/ai|人工知能|機械学習|machine learning|深層学習|deep learning|llm|gpt|claude|chatgpt|gemini|openai|anthropic|transformer/.test(text)) {
+    if (/ai|人工知能|機械学習|machine learning|深層学習|deep learning|llm|gpt|claude|chatgpt|gemini|openai|anthropic|transformer|ニューラルネットワーク|neural network|自然言語処理|nlp/.test(text)) {
       return 'AI';
     }
     
     // 画像生成
-    if (/画像生成|image generation|stable diffusion|midjourney|dall-e|dalle|画像ai|生成ai|text to image|img2img/.test(text)) {
+    if (/画像生成|image generation|stable diffusion|midjourney|dall-e|dalle|画像ai|生成ai|text to image|img2img|diffusion|画像合成|ai art|ai イラスト/.test(text)) {
       return '画像生成';
     }
     
     // プロンプト
-    if (/プロンプト|prompt|プロンプトエンジニアリング|prompt engineering|プロンプトデザイン|few-shot|zero-shot|chain of thought/.test(text)) {
+    if (/プロンプト|prompt|プロンプトエンジニアリング|prompt engineering|プロンプトデザイン|few-shot|zero-shot|chain of thought|cot|プロンプト設計|指示文/.test(text)) {
       return 'プロンプト';
     }
     
-    // スクレイピング
-    if (/スクレイピング|scraping|クローリング|crawling|beautiful soup|beautifulsoup|scrapy|selenium|puppeteer|playwright|cheerio|web scraping|データ収集|データ抽出/.test(text)) {
+    // スクレイピング（キーワード大幅強化）
+    if (/スクレイピング|scraping|scrape|クローリング|crawling|crawler|beautiful soup|beautifulsoup|bs4|scrapy|selenium|puppeteer|playwright|cheerio|web scraping|データ収集|データ抽出|自動収集|webクローラー|クローラー|データ取得|情報収集|サイト解析/.test(text)) {
       return 'スクレイピング';
     }
     
     // フロントエンド
-    if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux/.test(text)) {
+    if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux|styled|emotion|component|hooks|フロントエンド|フロント/.test(text)) {
       return 'フロントエンド';
     }
     
     // バックエンド
-    if (/node\.?js|express|api|database|sql|mongodb|postgresql|graphql|backend|server|prisma|nest\.?js/.test(text)) {
+    if (/node\.?js|express|api|database|sql|mongodb|postgresql|graphql|backend|server|prisma|nest\.?js|rest|fastapi|django|flask|バックエンド|サーバー|データベース|db/.test(text)) {
       return 'バックエンド';
     }
     
     // インフラ
-    if (/docker|kubernetes|aws|gcp|azure|ci\/cd|terraform|github actions|vercel|netlify|deploy|infra/.test(text)) {
+    if (/docker|kubernetes|aws|gcp|azure|ci\/cd|terraform|github actions|vercel|netlify|deploy|infra|container|k8s|cloudformation|インフラ|デプロイ|クラウド/.test(text)) {
       return 'インフラ';
     }
     
@@ -66,12 +66,20 @@ export default function HomePage() {
 
   // フィルタリング＆検索ロジック
   const filteredArticles = React.useMemo(() => {
-    return articles
-      .map(article => ({
-        ...article,
-        category: categorizeArticle(article)
-      }))
-      .filter(article => {
+    const articlesWithCategory = articles.map(article => ({
+      ...article,
+      category: categorizeArticle(article)
+    }));
+    
+    // デバッグ: カテゴリー分類結果をログ出力
+    if (articlesWithCategory.length > 0) {
+      console.log('[カテゴリー分類結果]');
+      articlesWithCategory.forEach(article => {
+        console.log(`${article.title.substring(0, 30)}... → ${article.category}`);
+      });
+    }
+    
+    return articlesWithCategory.filter(article => {
         // カテゴリーフィルター
         if (selectedCategory !== '全て' && article.category !== selectedCategory) {
           return false;
@@ -1010,7 +1018,32 @@ export default function HomePage() {
 
                   {/* 検索結果数 */}
                   <div className="results-count">
-                    {filteredArticles.length}件の記事を表示中
+                    {filteredArticles.length > 0 ? (
+                      <>{filteredArticles.length}件の記事を表示中</>
+                    ) : (
+                      <>
+                        <div style={{ marginBottom: '1rem' }}>
+                          条件に一致する記事が見つかりませんでした
+                        </div>
+                        {(selectedCategory !== '全て' || selectedPlatform !== '全て' || searchQuery) && (
+                          <button
+                            className="filter-btn"
+                            onClick={() => {
+                              setSelectedCategory('全て');
+                              setSelectedPlatform('全て');
+                              setSearchQuery('');
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, var(--primary-pink), var(--primary-purple))',
+                              border: '1.5px solid var(--primary-pink)',
+                              fontWeight: 700,
+                            }}
+                          >
+                            🔄 フィルターをリセット
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -1040,6 +1073,22 @@ export default function HomePage() {
                         style={{ background: getPlatformColor(article.platform) }}
                       >
                         {article.platform}
+                      </span>
+                      {/* カテゴリーバッジ追加 */}
+                      <span 
+                        className="article-category-badge"
+                        style={{ 
+                          display: 'inline-block',
+                          marginLeft: '0.5rem',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: 'rgba(255, 255, 255, 0.15)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
+                        }}
+                      >
+                        {article.category}
                       </span>
                       <h3 className="article-title">{article.title}</h3>
                       <p className="article-excerpt">{article.excerpt}</p>
