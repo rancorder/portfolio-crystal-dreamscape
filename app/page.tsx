@@ -1,9 +1,9 @@
-// app/page.tsx - 季節エフェクト統合版
+// app/page.tsx - 相対パス版
 'use client';
 
 import Link from 'next/link';
-import { projects } from '@/data/projects';
-import { SeasonalCanvas } from '@/components/SeasonalCanvas';
+import { projects } from '../data/projects';
+import { SeasonalCanvas } from '../components/SeasonalCanvas';
 
 export default function HomePage() {
   return (
