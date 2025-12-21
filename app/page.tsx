@@ -1,4 +1,4 @@
-// app/page.tsx - CORS回避版（桜吹雪）
+// app/page.tsx - Performance最適化版
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,7 +12,7 @@ interface Article {
   publishedAt: string;
   platform: 'Zenn' | 'Qiita' | 'note';
   thumbnail?: string;
-  category?: string; // 自動判定カテゴリー
+  category?: string;
 }
 
 export default function HomePage() {
@@ -21,42 +21,38 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('全て');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('全て');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // 🌸 桜吹雪のON/OFF制御（デフォルト: OFF）
+  const [showSakura, setShowSakura] = useState(false);
 
   // カテゴリー自動判定
   const categorizeArticle = (article: Article): string => {
     const text = (article.title + ' ' + article.excerpt).toLowerCase();
     
-    // AI（最優先でチェック）
     if (/ai|人工知能|機械学習|machine learning|深層学習|deep learning|llm|gpt|claude|chatgpt|gemini|openai|anthropic|transformer|ニューラルネットワーク|neural network|自然言語処理|nlp/.test(text)) {
       return 'AI';
     }
     
-    // 画像生成
     if (/画像生成|image generation|stable diffusion|midjourney|dall-e|dalle|画像ai|生成ai|text to image|img2img|diffusion|画像合成|ai art|ai イラスト/.test(text)) {
       return '画像生成';
     }
     
-    // プロンプト
     if (/プロンプト|prompt|プロンプトエンジニアリング|prompt engineering|プロンプトデザイン|few-shot|zero-shot|chain of thought|cot|プロンプト設計|指示文/.test(text)) {
       return 'プロンプト';
     }
     
-    // スクレイピング（キーワード大幅強化）
     if (/スクレイピング|scraping|scrape|クローリング|crawling|crawler|beautiful soup|beautifulsoup|bs4|scrapy|selenium|puppeteer|playwright|cheerio|web scraping|データ収集|データ抽出|自動収集|webクローラー|クローラー|データ取得|情報収集|サイト解析/.test(text)) {
       return 'スクレイピング';
     }
     
-    // フロントエンド
     if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux|styled|emotion|component|hooks|フロントエンド|フロント/.test(text)) {
       return 'フロントエンド';
     }
     
-    // バックエンド
     if (/node\.?js|express|api|database|sql|mongodb|postgresql|graphql|backend|server|prisma|nest\.?js|rest|fastapi|django|flask|バックエンド|サーバー|データベース|db/.test(text)) {
       return 'バックエンド';
     }
     
-    // インフラ
     if (/docker|kubernetes|aws|gcp|azure|ci\/cd|terraform|github actions|vercel|netlify|deploy|infra|container|k8s|cloudformation|インフラ|デプロイ|クラウド/.test(text)) {
       return 'インフラ';
     }
@@ -64,47 +60,34 @@ export default function HomePage() {
     return 'その他';
   };
 
-  // フィルタリング＆検索ロジック
   const filteredArticles = React.useMemo(() => {
     const articlesWithCategory = articles.map(article => ({
       ...article,
       category: categorizeArticle(article)
     }));
     
-    // デバッグ: カテゴリー分類結果をログ出力
-    if (articlesWithCategory.length > 0) {
-      console.log('[カテゴリー分類結果]');
-      articlesWithCategory.forEach(article => {
-        console.log(`${article.title.substring(0, 30)}... → ${article.category}`);
-      });
-    }
-    
     return articlesWithCategory.filter(article => {
-        // カテゴリーフィルター
-        if (selectedCategory !== '全て' && article.category !== selectedCategory) {
+      if (selectedCategory !== '全て' && article.category !== selectedCategory) {
+        return false;
+      }
+      
+      if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) {
+        return false;
+      }
+      
+      if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase();
+        const matchTitle = article.title.toLowerCase().includes(query);
+        const matchExcerpt = article.excerpt.toLowerCase().includes(query);
+        if (!matchTitle && !matchExcerpt) {
           return false;
         }
-        
-        // プラットフォームフィルター
-        if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) {
-          return false;
-        }
-        
-        // 検索フィルター
-        if (searchQuery.trim() !== '') {
-          const query = searchQuery.toLowerCase();
-          const matchTitle = article.title.toLowerCase().includes(query);
-          const matchExcerpt = article.excerpt.toLowerCase().includes(query);
-          if (!matchTitle && !matchExcerpt) {
-            return false;
-          }
-        }
-        
-        return true;
-      });
+      }
+      
+      return true;
+    });
   }, [articles, selectedCategory, selectedPlatform, searchQuery]);
 
-  // カテゴリー別記事数カウント
   const categoryCounts = React.useMemo(() => {
     const counts: Record<string, number> = {
       '全て': articles.length,
@@ -126,7 +109,6 @@ export default function HomePage() {
     return counts;
   }, [articles]);
 
-  // プラットフォーム別記事数カウント
   const platformCounts = React.useMemo(() => {
     const counts: Record<string, number> = {
       '全て': articles.length,
@@ -142,8 +124,10 @@ export default function HomePage() {
     return counts;
   }, [articles]);
 
-  // 🌸 Canvas桜吹雪エフェクト
+  // 🌸 Canvas桜吹雪エフェクト（オプション）
   useEffect(() => {
+    if (!showSakura) return; // OFFなら何もしない
+
     const canvas = document.getElementById('canvas-sakura') as HTMLCanvasElement;
     if (!canvas) return;
 
@@ -166,7 +150,7 @@ export default function HomePage() {
     }
 
     const particles: Particle[] = [];
-    const particleCount = 150;
+    const particleCount = 80; // 150 → 80に削減（パフォーマンス改善）
 
     for (let i = 0; i < particleCount; i++) {
       particles.push({
@@ -227,7 +211,16 @@ export default function HomePage() {
     document.addEventListener('mousemove', handleMouseMove);
 
     let animationId: number;
+    let frameCount = 0;
+    
     function animate() {
+      // フレームスキップ（60fps → 30fps）
+      frameCount++;
+      if (frameCount % 2 !== 0) {
+        animationId = requestAnimationFrame(animate);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach((p, index) => {
@@ -270,43 +263,47 @@ export default function HomePage() {
       document.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [showSakura]);
 
-  // 記事取得（CORS回避版）
+  // 記事取得（遅延ロード - Performance改善）
   useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        console.log('[Client] Fetching articles...');
-        
-        const fetchers = [
-          fetchQiita('rancorder'),
-          fetchViaProxy('https://zenn.dev/supermassu/feed', 'Zenn'),
-          fetchViaProxy('https://note.com/rancorder/rss', 'note'),
-        ];
-        
-        const results = await Promise.allSettled(fetchers);
-        
-        const all = results
-          .filter((r): r is PromiseFulfilledResult<Article[]> => r.status === 'fulfilled')
-          .flatMap(r => r.value);
-        
-        const sorted = all.sort((a, b) => 
-          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-        );
-        
-        console.log(`[Client] Loaded ${sorted.length} items`);
-        setArticles(sorted);
-        setLoading(false);
-      } catch (error) {
-        console.error('[Client] Error:', error);
-        setLoading(false);
-      }
-    };
+    // 100ms遅延で初回レンダリングをブロックしない
+    const timer = setTimeout(() => {
+      fetchArticles();
+    }, 100);
 
-    fetchArticles();
+    return () => clearTimeout(timer);
   }, []);
 
-  // Qiita取得（直接）
+  const fetchArticles = async () => {
+    try {
+      console.log('[Client] Fetching articles...');
+      
+      const fetchers = [
+        fetchQiita('rancorder'),
+        fetchViaProxy('https://zenn.dev/supermassu/feed', 'Zenn'),
+        fetchViaProxy('https://note.com/rancorder/rss', 'note'),
+      ];
+      
+      const results = await Promise.allSettled(fetchers);
+      
+      const all = results
+        .filter((r): r is PromiseFulfilledResult<Article[]> => r.status === 'fulfilled')
+        .flatMap(r => r.value);
+      
+      const sorted = all.sort((a, b) => 
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+      
+      console.log(`[Client] Loaded ${sorted.length} items`);
+      setArticles(sorted);
+      setLoading(false);
+    } catch (error) {
+      console.error('[Client] Error:', error);
+      setLoading(false);
+    }
+  };
+
   async function fetchQiita(username: string): Promise<Article[]> {
     try {
       const res = await fetch(`https://qiita.com/api/v2/users/${username}/items?per_page=10`);
@@ -319,7 +316,7 @@ export default function HomePage() {
         excerpt: item.body.substring(0, 150) + '...',
         publishedAt: item.created_at,
         platform: 'Qiita' as const,
-        thumbnail: item.user?.profile_image_url || undefined, // サムネイル
+        thumbnail: item.user?.profile_image_url || undefined,
       }));
     } catch (error) {
       console.error('[Qiita] Error:', error);
@@ -327,7 +324,6 @@ export default function HomePage() {
     }
   }
 
-  // RSS→JSONプロキシ経由取得
   async function fetchViaProxy(rssUrl: string, platform: 'Zenn' | 'note'): Promise<Article[]> {
     try {
       const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
@@ -345,33 +341,24 @@ export default function HomePage() {
           .replace(/&nbsp;/g, ' ')
           .trim();
         
-        // サムネイル画像を抽出（複数パターン対応）
         let thumbnail: string | undefined;
         
-        // 1. thumbnail フィールド
         if (item.thumbnail) {
           thumbnail = item.thumbnail;
-        }
-        // 2. enclosure.link
-        else if (item.enclosure?.link) {
+        } else if (item.enclosure?.link) {
           thumbnail = item.enclosure.link;
-        }
-        // 3. content から抽出（note用）
-        else if (item.content) {
+        } else if (item.content) {
           const imgMatch = item.content.match(/<img[^>]+src=["']([^"']+)["']/i);
           if (imgMatch) {
             thumbnail = imgMatch[1];
           }
-        }
-        // 4. description から抽出
-        else if (item.description) {
+        } else if (item.description) {
           const imgMatch = item.description.match(/<img[^>]+src=["']([^"']+)["']/i);
           if (imgMatch) {
             thumbnail = imgMatch[1];
           }
         }
         
-        // noteの場合、assets.st-note.comのURLを確認
         if (platform === 'note' && thumbnail && !thumbnail.startsWith('http')) {
           thumbnail = `https://assets.st-note.com${thumbnail}`;
         }
@@ -392,7 +379,6 @@ export default function HomePage() {
     }
   }
 
-  // プラットフォーム別カラー
   const getPlatformColor = (platform: string) => {
     switch (platform) {
       case 'Zenn': return 'linear-gradient(135deg, #3EA8FF, #50C0FF)';
@@ -452,7 +438,6 @@ export default function HomePage() {
           z-index: 1;
         }
 
-        /* 冬の装飾 */
         body::after {
           content: '⛄';
           position: fixed;
@@ -470,7 +455,6 @@ export default function HomePage() {
           50% { transform: translateY(-20px); }
         }
 
-        /* 追加の雪だるま（左上） */
         .winter-decoration-left {
           position: fixed;
           top: 10%;
@@ -483,7 +467,6 @@ export default function HomePage() {
           animation-delay: 1s;
         }
 
-        /* 冬の木（右中央） */
         .winter-decoration-tree {
           position: fixed;
           top: 50%;
@@ -496,26 +479,60 @@ export default function HomePage() {
           animation-delay: 2s;
         }
 
-        /* モバイルでは小さく */
-        @media (max-width: 768px) {
-          body::after {
-            font-size: 4rem;
-            bottom: 3%;
-            right: 3%;
-            opacity: 0.1;
-          }
-          
-          .winter-decoration-left {
-            font-size: 3rem;
-            top: 5%;
-            left: 2%;
-            opacity: 0.08;
-          }
-          
-          .winter-decoration-tree {
-            font-size: 2.5rem;
-            opacity: 0.08;
-          }
+        /* 桜吹雪ボタン */
+        .sakura-toggle {
+          position: fixed;
+          bottom: 2rem;
+          left: 2rem;
+          z-index: 100;
+          padding: 1rem 2rem;
+          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 50px;
+          color: white;
+          font-size: 1rem;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 8px 24px rgba(255, 183, 213, 0.4);
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+        }
+
+        .sakura-toggle:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 32px rgba(255, 183, 213, 0.6);
+        }
+
+        .sakura-toggle.active {
+          background: linear-gradient(135deg, #FF69B4, #FF1493);
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 8px 24px rgba(255, 183, 213, 0.4); }
+          50% { box-shadow: 0 8px 32px rgba(255, 105, 180, 0.8); }
+        }
+
+        .sakura-warning {
+          position: fixed;
+          bottom: 6rem;
+          left: 2rem;
+          z-index: 99;
+          padding: 0.8rem 1.5rem;
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 20px;
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 0.85rem;
+          max-width: 280px;
+          opacity: 0;
+          animation: fadeInOut 4s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+          0%, 100% { opacity: 0; }
+          10%, 90% { opacity: 1; }
         }
 
         #canvas-sakura {
@@ -526,6 +543,8 @@ export default function HomePage() {
           height: 100%;
           z-index: 2;
           pointer-events: none;
+          opacity: ${showSakura ? '1' : '0'};
+          transition: opacity 0.5s ease;
         }
 
         .glass {
@@ -745,7 +764,6 @@ export default function HomePage() {
           font-size: 1.2rem;
         }
 
-        /* フィルターセクション */
         .filter-section {
           margin-bottom: 3rem;
           padding: 2rem;
@@ -909,7 +927,6 @@ export default function HomePage() {
             font-size: 0.9rem;
           }
 
-          /* フィルターのモバイル対応 */
           .filter-section {
             padding: 1.5rem;
           }
@@ -931,12 +948,61 @@ export default function HomePage() {
           .filter-label {
             font-size: 0.85rem;
           }
+
+          .sakura-toggle {
+            bottom: 1rem;
+            left: 1rem;
+            padding: 0.8rem 1.5rem;
+            font-size: 0.9rem;
+          }
+
+          .sakura-warning {
+            bottom: 4.5rem;
+            left: 1rem;
+            max-width: 240px;
+            font-size: 0.75rem;
+            padding: 0.6rem 1.2rem;
+          }
+
+          body::after {
+            font-size: 4rem;
+            bottom: 3%;
+            right: 3%;
+            opacity: 0.1;
+          }
+          
+          .winter-decoration-left {
+            font-size: 3rem;
+            top: 5%;
+            left: 2%;
+            opacity: 0.08;
+          }
+          
+          .winter-decoration-tree {
+            font-size: 2.5rem;
+            opacity: 0.08;
+          }
         }
       `}</style>
 
-      {/* 冬の装飾 */}
       <div className="winter-decoration-left">⛄</div>
       <div className="winter-decoration-tree">🎄</div>
+
+      {/* 🌸 桜吹雪トグルボタン */}
+      <button 
+        className={`sakura-toggle ${showSakura ? 'active' : ''}`}
+        onClick={() => setShowSakura(!showSakura)}
+        aria-label="桜吹雪エフェクトの切り替え"
+      >
+        {showSakura ? '🌸 桜吹雪 ON' : '🌸 桜吹雪を見る'}
+      </button>
+
+      {/* パフォーマンス警告（初回のみ） */}
+      {showSakura && (
+        <div className="sakura-warning" key={Date.now()}>
+          ⚠️ エフェクトON中はパフォーマンスが低下します
+        </div>
+      )}
 
       <canvas id="canvas-sakura"></canvas>
 
@@ -946,7 +1012,7 @@ export default function HomePage() {
           <ul className="nav-links">
             <li><a href="#home">Home</a></li>
             <li><a href="#blog">Blog</a></li>
-            <li><a href="https://github.com/rancorder" target="_blank">GitHub</a></li>
+            <li><a href="https://github.com/rancorder" target="_blank" rel="noopener noreferrer">GitHub</a></li>
           </ul>
         </nav>
       </header>
@@ -970,9 +1036,7 @@ export default function HomePage() {
               <div className="loading">記事を読み込み中...</div>
             ) : (
               <>
-                {/* フィルターセクション */}
                 <div className="filter-section">
-                  {/* 検索ボックス */}
                   <div className="filter-group">
                     <label className="filter-label">🔍 記事を検索</label>
                     <input
@@ -984,7 +1048,6 @@ export default function HomePage() {
                     />
                   </div>
 
-                  {/* カテゴリーフィルター */}
                   <div className="filter-group">
                     <label className="filter-label">📂 カテゴリー</label>
                     <div className="filter-buttons">
@@ -1000,7 +1063,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* プラットフォームフィルター */}
                   <div className="filter-group">
                     <label className="filter-label">🌐 プラットフォーム</label>
                     <div className="filter-buttons">
@@ -1016,7 +1078,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* 検索結果数 */}
                   <div className="results-count">
                     {filteredArticles.length > 0 ? (
                       <>{filteredArticles.length}件の記事を表示中</>
@@ -1047,7 +1108,6 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* 記事一覧 */}
                 <div className="articles-grid">
                   {filteredArticles.length > 0 ? (
                     filteredArticles.map(article => (
@@ -1074,7 +1134,6 @@ export default function HomePage() {
                       >
                         {article.platform}
                       </span>
-                      {/* カテゴリーバッジ追加 */}
                       <span 
                         className="article-category-badge"
                         style={{ 
@@ -1114,7 +1173,7 @@ export default function HomePage() {
       <footer>
         <p>© 2025 AI Art Studio - Crystal Dreamscape</p>
         <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-          🌸 Powered by Next.js + Canvas API
+          🌸 Performance Optimized | Canvas API (Optional)
         </p>
       </footer>
     </>
