@@ -17,7 +17,7 @@ interface Article {
 export async function GET() {
   try {
     const parser = new Parser();
-    const feed = await parser.parseURL('https://zenn.dev/rancorder/feed');
+    const feed = await parser.parseURL('https://zenn.dev/supermassu/feed');
     
     const articles: Article[] = feed.items.slice(0, 20).map((item, index) => ({
       id: `zenn-${index}`,
