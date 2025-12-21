@@ -1,7 +1,21 @@
 // app/services/page.tsx
-'use client';
+import type { Metadata, Viewport } from 'next'
 
-import Link from 'next/link';
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#000000',
+}
+
+export const metadata: Metadata = {
+  title: 'Services | H・M',
+  description: '提供サービス一覧 - Web scraping、BtoB PM支援、QA自動化',
+  openGraph: {
+    title: 'Services | H・M',
+    description: '提供サービス一覧',
+  },
+}
+
 
 export default function ServicesPage() {
   return (
