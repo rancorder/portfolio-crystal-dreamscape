@@ -306,7 +306,7 @@ export default function HomePage() {
 
   async function fetchQiita(username: string): Promise<Article[]> {
     try {
-      const res = await fetch(`https://qiita.com/api/v2/users/${username}/items?per_page=10`);
+      const res = await fetch(`https://qiita.com/rancorder/feed`);
       const data = await res.json();
       
       return data.map((item: any) => ({
@@ -1179,3 +1179,4 @@ export default function HomePage() {
     </>
   );
 }
+
