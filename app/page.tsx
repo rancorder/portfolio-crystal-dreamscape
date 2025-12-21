@@ -1,8 +1,11 @@
-// app/page.tsx - CORS回避版（桜吹雪）
+// /app/page.tsx - 最高のサイト完全版
+// 新規実装 - Canvas背景付き
+
 'use client';
 
-import { useEffect, useState } from 'react';
-import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { projects } from '@/data/projects';
 
 interface Article {
   id: string;
@@ -10,1113 +13,1013 @@ interface Article {
   url: string;
   excerpt: string;
   publishedAt: string;
-  platform: 'Zenn' | 'Qiita' | 'note';
-  thumbnail?: string;
-  category?: string; // 自動判定カテゴリー
+  platform: string;
 }
 
-export default function HomePage() {
+export default function Home() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('全て');
-  const [selectedPlatform, setSelectedPlatform] = useState<string>('全て');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // カテゴリー自動判定
-  const categorizeArticle = (article: Article): string => {
-    const text = (article.title + ' ' + article.excerpt).toLowerCase();
-    
-    // AI（最優先でチェック）
-    if (/ai|人工知能|機械学習|machine learning|深層学習|deep learning|llm|gpt|claude|chatgpt|gemini|openai|anthropic|transformer|ニューラルネットワーク|neural network|自然言語処理|nlp/.test(text)) {
-      return 'AI';
-    }
-    
-    // 画像生成
-    if (/画像生成|image generation|stable diffusion|midjourney|dall-e|dalle|画像ai|生成ai|text to image|img2img|diffusion|画像合成|ai art|ai イラスト/.test(text)) {
-      return '画像生成';
-    }
-    
-    // プロンプト
-    if (/プロンプト|prompt|プロンプトエンジニアリング|prompt engineering|プロンプトデザイン|few-shot|zero-shot|chain of thought|cot|プロンプト設計|指示文/.test(text)) {
-      return 'プロンプト';
-    }
-    
-    // スクレイピング（キーワード大幅強化）
-    if (/スクレイピング|scraping|scrape|クローリング|crawling|crawler|beautiful soup|beautifulsoup|bs4|scrapy|selenium|puppeteer|playwright|cheerio|web scraping|データ収集|データ抽出|自動収集|webクローラー|クローラー|データ取得|情報収集|サイト解析/.test(text)) {
-      return 'スクレイピング';
-    }
-    
-    // フロントエンド
-    if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux|styled|emotion|component|hooks|フロントエンド|フロント/.test(text)) {
-      return 'フロントエンド';
-    }
-    
-    // バックエンド
-    if (/node\.?js|express|api|database|sql|mongodb|postgresql|graphql|backend|server|prisma|nest\.?js|rest|fastapi|django|flask|バックエンド|サーバー|データベース|db/.test(text)) {
-      return 'バックエンド';
-    }
-    
-    // インフラ
-    if (/docker|kubernetes|aws|gcp|azure|ci\/cd|terraform|github actions|vercel|netlify|deploy|infra|container|k8s|cloudformation|インフラ|デプロイ|クラウド/.test(text)) {
-      return 'インフラ';
-    }
-    
-    return 'その他';
-  };
-
-  // フィルタリング＆検索ロジック
-  const filteredArticles = React.useMemo(() => {
-    const articlesWithCategory = articles.map(article => ({
-      ...article,
-      category: categorizeArticle(article)
-    }));
-    
-    // デバッグ: カテゴリー分類結果をログ出力
-    if (articlesWithCategory.length > 0) {
-      console.log('[カテゴリー分類結果]');
-      articlesWithCategory.forEach(article => {
-        console.log(`${article.title.substring(0, 30)}... → ${article.category}`);
-      });
-    }
-    
-    return articlesWithCategory.filter(article => {
-        // カテゴリーフィルター
-        if (selectedCategory !== '全て' && article.category !== selectedCategory) {
-          return false;
-        }
-        
-        // プラットフォームフィルター
-        if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) {
-          return false;
-        }
-        
-        // 検索フィルター
-        if (searchQuery.trim() !== '') {
-          const query = searchQuery.toLowerCase();
-          const matchTitle = article.title.toLowerCase().includes(query);
-          const matchExcerpt = article.excerpt.toLowerCase().includes(query);
-          if (!matchTitle && !matchExcerpt) {
-            return false;
-          }
-        }
-        
-        return true;
-      });
-  }, [articles, selectedCategory, selectedPlatform, searchQuery]);
-
-  // カテゴリー別記事数カウント
-  const categoryCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {
-      '全て': articles.length,
-      'AI': 0,
-      '画像生成': 0,
-      'プロンプト': 0,
-      'スクレイピング': 0,
-      'フロントエンド': 0,
-      'バックエンド': 0,
-      'インフラ': 0,
-      'その他': 0,
-    };
-    
-    articles.forEach(article => {
-      const category = categorizeArticle(article);
-      counts[category]++;
-    });
-    
-    return counts;
-  }, [articles]);
-
-  // プラットフォーム別記事数カウント
-  const platformCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {
-      '全て': articles.length,
-      'Zenn': 0,
-      'Qiita': 0,
-      'note': 0,
-    };
-    
-    articles.forEach(article => {
-      counts[article.platform]++;
-    });
-    
-    return counts;
-  }, [articles]);
-
-  // 🌸 Canvas桜吹雪エフェクト
+  // 記事取得
   useEffect(() => {
-    const canvas = document.getElementById('canvas-sakura') as HTMLCanvasElement;
+    fetch('/api/articles')
+      .then(res => res.json())
+      .then(data => {
+        setArticles(data.articles || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
+
+  // Canvas背景アニメーション
+  useEffect(() => {
+    const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d', { alpha: true });
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Canvas サイズ設定
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
-    interface Particle {
+    // パーティクル設定
+    const particles: Array<{
       x: number;
       y: number;
       vx: number;
       vy: number;
       radius: number;
-      color: string;
-      alpha: number;
-      rotation: number;
-      rotationSpeed: number;
-    }
+    }> = [];
 
-    const particles: Particle[] = [];
-    const particleCount = 150;
+    const particleCount = window.innerWidth < 768 ? 50 : 100;
 
+    // パーティクル生成
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height - canvas.height,
+        y: Math.random() * canvas.height,
         vx: (Math.random() - 0.5) * 0.5,
-        vy: Math.random() * 1.5 + 0.5,
-        radius: Math.random() * 4 + 2,
-        color: getRandomColor(),
-        alpha: Math.random() * 0.5 + 0.5,
-        rotation: Math.random() * Math.PI * 2,
-        rotationSpeed: (Math.random() - 0.5) * 0.02,
+        vy: (Math.random() - 0.5) * 0.5,
+        radius: Math.random() * 2 + 1,
       });
     }
 
-    function getRandomColor(): string {
-      const colors = [
-        'rgba(255, 183, 213, ',
-        'rgba(255, 255, 255, ',
-        'rgba(201, 160, 220, ',
-        'rgba(165, 216, 255, ',
-      ];
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
-
-    function drawSakura(x: number, y: number, radius: number, color: string, alpha: number, rotation: number) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(rotation);
-      ctx.globalAlpha = alpha;
-
-      for (let i = 0; i < 5; i++) {
-        ctx.save();
-        ctx.rotate((Math.PI * 2 * i) / 5);
-        
-        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-        gradient.addColorStop(0, color + '1)');
-        gradient.addColorStop(0.5, color + '0.8)');
-        gradient.addColorStop(1, color + '0)');
-        
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.ellipse(0, -radius * 0.3, radius * 0.6, radius, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      ctx.restore();
-    }
-
-    let mouseX = 0;
-    let mouseY = 0;
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    };
-    document.addEventListener('mousemove', handleMouseMove);
-
+    // アニメーションループ
     let animationId: number;
-    function animate() {
+    const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach((p, index) => {
-        p.y += p.vy;
+      // パーティクル更新・描画
+      particles.forEach((p, i) => {
         p.x += p.vx;
-        p.x += Math.sin(Date.now() * 0.001 + index) * 0.3;
-        p.rotation += p.rotationSpeed;
+        p.y += p.vy;
 
-        const dx = mouseX - p.x;
-        const dy = mouseY - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 100) {
-          p.x -= (dx / dist) * 2;
-          p.y -= (dy / dist) * 2;
-        }
+        // 壁で反射
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
 
-        if (p.y > canvas.height + 50) {
-          p.y = -50;
-          p.x = Math.random() * canvas.width;
-        }
+        // パーティクル描画
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(157, 78, 221, 0.6)';
+        ctx.fill();
 
-        if (p.x < -50) p.x = canvas.width + 50;
-        if (p.x > canvas.width + 50) p.x = -50;
+        // 接続線描画
+        particles.forEach((p2, j) => {
+          if (i < j) {
+            const dx = p.x - p2.x;
+            const dy = p.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
 
-        drawSakura(p.x, p.y, p.radius, p.color, p.alpha, p.rotation);
+            if (dist < 150) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = `rgba(157, 78, 221, ${0.2 * (1 - dist / 150)})`;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+        });
       });
 
       animationId = requestAnimationFrame(animate);
-    }
-    animate();
-
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
     };
-    window.addEventListener('resize', handleResize);
+    animate();
 
     return () => {
       cancelAnimationFrame(animationId);
-      document.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', resizeCanvas);
     };
   }, []);
-
-  // 記事取得（CORS回避版）
-  useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        console.log('[Client] Fetching articles...');
-        
-        const fetchers = [
-          fetchQiita('rancorder'),
-          fetchViaProxy('https://zenn.dev/supermassu/feed', 'Zenn'),
-          fetchViaProxy('https://note.com/rancorder/rss', 'note'),
-        ];
-        
-        const results = await Promise.allSettled(fetchers);
-        
-        const all = results
-          .filter((r): r is PromiseFulfilledResult<Article[]> => r.status === 'fulfilled')
-          .flatMap(r => r.value);
-        
-        const sorted = all.sort((a, b) => 
-          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-        );
-        
-        console.log(`[Client] Loaded ${sorted.length} items`);
-        setArticles(sorted);
-        setLoading(false);
-      } catch (error) {
-        console.error('[Client] Error:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchArticles();
-  }, []);
-
-  // Qiita取得（直接）
-  async function fetchQiita(username: string): Promise<Article[]> {
-    try {
-      const res = await fetch(`https://qiita.com/api/v2/users/${username}/items?per_page=10`);
-      const data = await res.json();
-      
-      return data.map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        url: item.url,
-        excerpt: item.body.substring(0, 150) + '...',
-        publishedAt: item.created_at,
-        platform: 'Qiita' as const,
-        thumbnail: item.user?.profile_image_url || undefined, // サムネイル
-      }));
-    } catch (error) {
-      console.error('[Qiita] Error:', error);
-      return [];
-    }
-  }
-
-  // RSS→JSONプロキシ経由取得
-  async function fetchViaProxy(rssUrl: string, platform: 'Zenn' | 'note'): Promise<Article[]> {
-    try {
-      const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-      
-      const res = await fetch(proxyUrl);
-      const data = await res.json();
-      
-      if (data.status !== 'ok') {
-        throw new Error(`RSS2JSON error: ${data.message}`);
-      }
-      
-      return data.items.slice(0, 10).map((item: any, i: number) => {
-        const cleanDescription = (item.description || '')
-          .replace(/<[^>]*>/g, '')
-          .replace(/&nbsp;/g, ' ')
-          .trim();
-        
-        // サムネイル画像を抽出（複数パターン対応）
-        let thumbnail: string | undefined;
-        
-        // 1. thumbnail フィールド
-        if (item.thumbnail) {
-          thumbnail = item.thumbnail;
-        }
-        // 2. enclosure.link
-        else if (item.enclosure?.link) {
-          thumbnail = item.enclosure.link;
-        }
-        // 3. content から抽出（note用）
-        else if (item.content) {
-          const imgMatch = item.content.match(/<img[^>]+src=["']([^"']+)["']/i);
-          if (imgMatch) {
-            thumbnail = imgMatch[1];
-          }
-        }
-        // 4. description から抽出
-        else if (item.description) {
-          const imgMatch = item.description.match(/<img[^>]+src=["']([^"']+)["']/i);
-          if (imgMatch) {
-            thumbnail = imgMatch[1];
-          }
-        }
-        
-        // noteの場合、assets.st-note.comのURLを確認
-        if (platform === 'note' && thumbnail && !thumbnail.startsWith('http')) {
-          thumbnail = `https://assets.st-note.com${thumbnail}`;
-        }
-        
-        return {
-          id: `${platform.toLowerCase()}-${i}`,
-          title: item.title || 'No Title',
-          url: item.link || '#',
-          excerpt: cleanDescription.substring(0, 150) + (cleanDescription.length > 150 ? '...' : ''),
-          publishedAt: item.pubDate || new Date().toISOString(),
-          platform,
-          thumbnail,
-        };
-      });
-    } catch (error) {
-      console.error(`[${platform}] Error:`, error);
-      return [];
-    }
-  }
-
-  // プラットフォーム別カラー
-  const getPlatformColor = (platform: string) => {
-    switch (platform) {
-      case 'Zenn': return 'linear-gradient(135deg, #3EA8FF, #50C0FF)';
-      case 'Qiita': return 'linear-gradient(135deg, #55C500, #7AD929)';
-      case 'note': return 'linear-gradient(135deg, #41C9B4, #5DD9C6)';
-      default: return 'linear-gradient(135deg, var(--primary-pink), var(--primary-purple))';
-    }
-  };
 
   return (
     <>
-      <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
+      {/* Canvas背景 */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
 
-        :root {
-          --primary-pink: #FFB7D5;
-          --primary-purple: #C9A0DC;
-          --primary-blue: #A5D8FF;
-          --text-light: #FFFFFF;
-          --glass-bg: rgba(255, 255, 255, 0.12);
-          --glass-border: rgba(255, 255, 255, 0.25);
-        }
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'linear-gradient(to bottom, #1a0b2e 0%, #2d1b4e 50%, #1a0b2e 100%)',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        {/* ========== ヘッダー ========== */}
+        <header style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          background: 'rgba(26, 11, 46, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(157, 78, 221, 0.2)',
+          padding: '1rem 0'
+        }}>
+          <nav style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            maxWidth: '1400px',
+            margin: '0 auto',
+            padding: '0 2rem'
+          }}>
+            <div style={{
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: 'white',
+              background: 'linear-gradient(135deg, #9d4edd 0%, #c77dff 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
+              H・M Engineering
+            </div>
 
-        body {
-          font-family: 'Josefin Sans', sans-serif;
-          background: linear-gradient(135deg, 
-            #3D2B5C 0%, #4A3368 20%, #5C4A7A 40%, 
-            #4A3368 60%, #3D2B5C 80%, #2E1F47 100%
-          );
-          background-size: 400% 400%;
-          animation: gradientShift 15s ease infinite;
-          color: var(--text-light);
-          min-height: 100vh;
-          overflow-x: hidden;
-        }
+            <ul style={{
+              display: 'flex',
+              gap: '2rem',
+              listStyle: 'none',
+              margin: 0,
+              padding: 0
+            }}>
+              {[
+                { href: '#home', label: 'Home' },
+                { href: '#projects', label: 'Projects' },
+                { href: '/services', label: 'Services' },
+                { href: '#blog', label: 'Blog' },
+                { href: '/contact', label: 'Contact' }
+              ].map(item => (
+                <li key={item.href}>
+                  <a
+                    href={item.href}
+                    style={{
+                      color: '#c77dff',
+                      textDecoration: 'none',
+                      fontSize: '0.95rem',
+                      fontWeight: '500',
+                      transition: 'color 0.3s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#c77dff'}
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </header>
 
-        @keyframes gradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
+        <main style={{ paddingTop: '80px' }}>
+          {/* ========== 1. ヒーロー ========== */}
+          <section id="home" style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '4rem 2rem',
+            position: 'relative'
+          }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+              {/* バッジ */}
+              <div style={{
+                display: 'inline-block',
+                background: 'rgba(157, 78, 221, 0.2)',
+                border: '1px solid rgba(157, 78, 221, 0.4)',
+                borderRadius: '2rem',
+                padding: '0.5rem 1.5rem',
+                marginBottom: '2rem'
+              }}>
+                <span style={{ color: '#c77dff', fontSize: '0.9rem', fontWeight: '600' }}>
+                  ✨ 99.9% Uptime | 54 Sites Monitored
+                </span>
+              </div>
 
-        body::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: 
-            radial-gradient(circle at 20% 30%, rgba(255, 183, 213, 0.15) 0%, transparent 40%),
-            radial-gradient(circle at 80% 70%, rgba(165, 216, 255, 0.12) 0%, transparent 40%);
-          pointer-events: none;
-          z-index: 1;
-        }
+              {/* メインキャッチ */}
+              <h1 style={{
+                fontSize: 'clamp(2.5rem, 8vw, 5rem)',
+                fontWeight: 'bold',
+                lineHeight: 1.2,
+                marginBottom: '2rem',
+                background: 'linear-gradient(135deg, #ffffff 0%, #c77dff 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                製造業PM 17年 ×<br />
+                フルスタック実装力
+              </h1>
 
-        /* 冬の装飾 */
-        body::after {
-          content: '⛄';
-          position: fixed;
-          bottom: 5%;
-          right: 5%;
-          font-size: 8rem;
-          opacity: 0.15;
-          pointer-events: none;
-          z-index: 1;
-          animation: float 6s ease-in-out infinite;
-        }
+              {/* サブキャッチ */}
+              <p style={{
+                fontSize: 'clamp(1.2rem, 3vw, 1.8rem)',
+                color: '#c77dff',
+                marginBottom: '1rem',
+                fontWeight: '500'
+              }}>
+                54ECサイトを24時間監視。<br />
+                月間10万件のデータを0.1%未満のエラー率で処理。
+              </p>
 
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
+              <p style={{
+                fontSize: 'clamp(1rem, 2.5vw, 1.2rem)',
+                color: 'rgba(199, 125, 255, 0.8)',
+                marginBottom: '3rem',
+                maxWidth: '800px',
+                margin: '0 auto 3rem',
+                lineHeight: 1.6
+              }}>
+                エンタープライズ顧客が「please help us」と頼る、<br />
+                課題を正確に理解し、技術で解決するプロダクトマネージャー。
+              </p>
 
-        /* 追加の雪だるま（左上） */
-        .winter-decoration-left {
-          position: fixed;
-          top: 10%;
-          left: 3%;
-          font-size: 6rem;
-          opacity: 0.12;
-          pointer-events: none;
-          z-index: 1;
-          animation: float 8s ease-in-out infinite;
-          animation-delay: 1s;
-        }
+              {/* CTAボタン */}
+              <div style={{
+                display: 'flex',
+                gap: '1.5rem',
+                justifyContent: 'center',
+                marginBottom: '5rem',
+                flexWrap: 'wrap'
+              }}>
+                <Link
+                  href="/contact"
+                  style={{
+                    background: 'linear-gradient(135deg, #9d4edd 0%, #c77dff 100%)',
+                    color: 'white',
+                    padding: '1.25rem 3rem',
+                    borderRadius: '0.75rem',
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                    boxShadow: '0 10px 30px rgba(157, 78, 221, 0.3)',
+                    transition: 'all 0.3s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 15px 40px rgba(157, 78, 221, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 10px 30px rgba(157, 78, 221, 0.3)';
+                  }}
+                >
+                  無料相談を予約 →
+                </Link>
 
-        /* 冬の木（右中央） */
-        .winter-decoration-tree {
-          position: fixed;
-          top: 50%;
-          right: 2%;
-          font-size: 5rem;
-          opacity: 0.1;
-          pointer-events: none;
-          z-index: 1;
-          animation: float 7s ease-in-out infinite;
-          animation-delay: 2s;
-        }
+                <a
+                  href="#projects"
+                  style={{
+                    border: '2px solid rgba(157, 78, 221, 0.6)',
+                    color: '#c77dff',
+                    padding: '1.25rem 3rem',
+                    borderRadius: '0.75rem',
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                    transition: 'all 0.3s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(157, 78, 221, 0.1)';
+                    e.currentTarget.style.borderColor = '#c77dff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(157, 78, 221, 0.6)';
+                  }}
+                >
+                  実績を見る
+                </a>
+              </div>
 
-        /* モバイルでは小さく */
-        @media (max-width: 768px) {
-          body::after {
-            font-size: 4rem;
-            bottom: 3%;
-            right: 3%;
-            opacity: 0.1;
-          }
-          
-          .winter-decoration-left {
-            font-size: 3rem;
-            top: 5%;
-            left: 2%;
-            opacity: 0.08;
-          }
-          
-          .winter-decoration-tree {
-            font-size: 2.5rem;
-            opacity: 0.08;
-          }
-        }
-
-        #canvas-sakura {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          z-index: 2;
-          pointer-events: none;
-        }
-
-        .glass {
-          background: var(--glass-bg);
-          backdrop-filter: blur(20px) saturate(150%);
-          border: 1.5px solid var(--glass-border);
-          border-radius: 24px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .container {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 2rem;
-          position: relative;
-          z-index: 3;
-          width: 100%;
-          box-sizing: border-box;
-        }
-
-        header {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 100;
-          padding: 1.5rem 3rem;
-          background: rgba(61, 43, 92, 0.4);
-          backdrop-filter: blur(15px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        nav {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          max-width: 1400px;
-          margin: 0 auto;
-        }
-
-        .logo {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 2rem;
-          font-weight: 700;
-          background: linear-gradient(135deg, 
-            var(--primary-pink), var(--primary-purple), var(--primary-blue)
-          );
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          letter-spacing: 2px;
-        }
-
-        .nav-links {
-          display: flex;
-          gap: 2.5rem;
-          list-style: none;
-        }
-
-        .nav-links a {
-          color: var(--text-light);
-          text-decoration: none;
-          font-weight: 600;
-          transition: all 0.3s ease;
-        }
-
-        .nav-links a:hover {
-          color: var(--primary-pink);
-        }
-
-        .hero {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 8rem 2rem 4rem;
-          text-align: center;
-          z-index: 3;
-        }
-
-        .hero-title {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: clamp(3rem, 8vw, 6rem);
-          font-weight: 700;
-          margin-bottom: 2rem;
-          background: linear-gradient(135deg, 
-            #FFB7D5, #F5C2E7, #C9A0DC, #A5D8FF, #D4E4FF
-          );
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-size: 200% auto;
-          animation: shimmer 5s ease-in-out infinite;
-        }
-
-        @keyframes shimmer {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-
-        .hero-subtitle {
-          font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-          margin-bottom: 3rem;
-          opacity: 0.9;
-        }
-
-        .blog-section {
-          padding: 8rem 2rem;
-          position: relative;
-          z-index: 3;
-        }
-
-        .section-title {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: clamp(2.5rem, 5vw, 4rem);
-          text-align: center;
-          margin-bottom: 2rem;
-          background: linear-gradient(135deg, 
-            var(--primary-pink), var(--primary-purple), var(--primary-blue)
-          );
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .section-subtitle {
-          text-align: center;
-          opacity: 0.85;
-          margin-bottom: 4rem;
-          font-size: 1.1rem;
-        }
-
-        .articles-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
-          gap: 2.5rem;
-          margin-top: 4rem;
-          width: 100%;
-        }
-
-        .article-card {
-          padding: 2.5rem;
-          transition: all 0.4s ease;
-          cursor: pointer;
-          overflow: hidden;
-          position: relative;
-          width: 100%;
-          box-sizing: border-box;
-        }
-
-        .article-card:hover {
-          transform: translateY(-12px) scale(1.02);
-          box-shadow: 0 20px 60px rgba(255, 183, 213, 0.5);
-        }
-
-        .article-thumbnail {
-          width: 100%;
-          height: 200px;
-          margin-bottom: 1.5rem;
-          border-radius: 16px;
-          overflow: hidden;
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .article-thumbnail img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          transition: transform 0.4s ease;
-        }
-
-        .article-card:hover .article-thumbnail img {
-          transform: scale(1.05);
-        }
-
-        .article-platform {
-          display: inline-block;
-          padding: 0.5rem 1.2rem;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          margin-bottom: 1rem;
-          color: white;
-        }
-
-        .article-title {
-          font-size: 1.4rem;
-          font-weight: 700;
-          margin-bottom: 1rem;
-          padding: 0 0.5rem;
-          color: var(--primary-pink);
-          line-height: 1.5;
-          word-break: break-word;
-          overflow-wrap: break-word;
-          hyphens: auto;
-          max-width: 100%;
-          white-space: normal;
-        }
-
-        .article-excerpt {
-          font-size: 0.95rem;
-          opacity: 0.85;
-          line-height: 1.7;
-          margin-bottom: 1.5rem;
-          padding: 0 0.5rem;
-        }
-
-        .article-date {
-          font-size: 0.85rem;
-          opacity: 0.7;
-          padding: 0 0.5rem;
-        }
-
-        .loading {
-          text-align: center;
-          padding: 3rem;
-          color: var(--primary-pink);
-          font-size: 1.2rem;
-        }
-
-        /* フィルターセクション */
-        .filter-section {
-          margin-bottom: 3rem;
-          padding: 2rem;
-          background: var(--glass-bg);
-          backdrop-filter: blur(20px) saturate(150%);
-          border: 1.5px solid var(--glass-border);
-          border-radius: 20px;
-        }
-
-        .filter-group {
-          margin-bottom: 1.5rem;
-        }
-
-        .filter-group:last-child {
-          margin-bottom: 0;
-        }
-
-        .filter-label {
-          font-size: 0.9rem;
-          font-weight: 600;
-          margin-bottom: 0.8rem;
-          opacity: 0.85;
-          display: block;
-        }
-
-        .filter-buttons {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.8rem;
-        }
-
-        .filter-btn {
-          padding: 0.6rem 1.2rem;
-          border-radius: 20px;
-          border: 1.5px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--text-light);
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-size: 0.9rem;
-          font-weight: 500;
-          white-space: nowrap;
-        }
-
-        .filter-btn:hover {
-          background: rgba(255, 183, 213, 0.3);
-          border-color: var(--primary-pink);
-          transform: translateY(-2px);
-        }
-
-        .filter-btn.active {
-          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
-          border-color: var(--primary-pink);
-          font-weight: 700;
-          box-shadow: 0 4px 15px rgba(255, 183, 213, 0.4);
-        }
-
-        .search-box {
-          width: 100%;
-          padding: 1rem 1.5rem;
-          border-radius: 25px;
-          border: 1.5px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--text-light);
-          font-size: 1rem;
-          transition: all 0.3s ease;
-          outline: none;
-        }
-
-        .search-box::placeholder {
-          color: rgba(255, 255, 255, 0.5);
-        }
-
-        .search-box:focus {
-          border-color: var(--primary-pink);
-          background: rgba(255, 255, 255, 0.12);
-          box-shadow: 0 0 20px rgba(255, 183, 213, 0.3);
-        }
-
-        .results-count {
-          text-align: center;
-          margin-top: 1.5rem;
-          opacity: 0.7;
-          font-size: 0.95rem;
-        }
-
-        footer {
-          padding: 3rem 2rem;
-          text-align: center;
-          border-top: 1px solid rgba(255, 255, 255, 0.15);
-          margin-top: 4rem;
-          background: rgba(61, 43, 92, 0.3);
-        }
-
-        @media (max-width: 768px) {
-          .articles-grid { 
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-            margin-top: 2rem;
-          }
-          
-          .article-card {
-            padding: 1rem;
-            overflow: hidden;
-            width: 100%;
-          }
-          
-          .article-thumbnail {
-            height: 150px;
-            margin-bottom: 1rem;
-            border-radius: 12px;
-          }
-          
-          .article-title {
-            font-size: 1rem;
-            margin-bottom: 0.8rem;
-            line-height: 1.6;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            max-width: 100%;
-          }
-          
-          .article-excerpt {
-            font-size: 0.85rem;
-            line-height: 1.6;
-            margin-bottom: 1rem;
-          }
-          
-          .article-platform {
-            font-size: 0.7rem;
-            padding: 0.4rem 1rem;
-            margin-bottom: 0.8rem;
-          }
-          
-          .article-date {
-            font-size: 0.75rem;
-          }
-          
-          .container {
-            padding: 0 1rem;
-            width: 100%;
-          }
-          
-          .blog-section {
-            padding: 4rem 1rem;
-          }
-          
-          header {
-            padding: 1rem 1.5rem;
-          }
-          
-          .logo {
-            font-size: 1.5rem;
-          }
-          
-          .nav-links {
-            gap: 1.5rem;
-          }
-          
-          .nav-links a {
-            font-size: 0.9rem;
-          }
-
-          /* フィルターのモバイル対応 */
-          .filter-section {
-            padding: 1.5rem;
-          }
-
-          .filter-buttons {
-            gap: 0.6rem;
-          }
-
-          .filter-btn {
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
-          }
-
-          .search-box {
-            padding: 0.8rem 1.2rem;
-            font-size: 0.9rem;
-          }
-
-          .filter-label {
-            font-size: 0.85rem;
-          }
-        }
-      `}</style>
-
-      {/* 冬の装飾 */}
-      <div className="winter-decoration-left">⛄</div>
-      <div className="winter-decoration-tree">🎄</div>
-
-      <canvas id="canvas-sakura"></canvas>
-
-      <header>
-        <nav>
-          <div className="logo">Crystal Studio</div>
-          <ul className="nav-links">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#blog">Blog</a></li>
-            <li><a href="https://github.com/rancorder" target="_blank">GitHub</a></li>
-          </ul>
-        </nav>
-      </header>
-
-      <main>
-        <section id="home" className="hero">
-          <div>
-            <h1 className="hero-title">rancorder テック記事 | 自動集約ブログ</h1>
-            <p className="hero-subtitle">
-              Zenn・Qiita・note から自動収集 | Next.js ISR実装
-            </p>
-          </div>
-        </section>
-
-        <section id="blog" className="blog-section">
-          <div className="container">
-            <h2 className="section-title">Latest Tech Articles</h2>
-            <p className="section-subtitle">Zenn・Qiita・noteから自動取得</p>
-            
-            {loading ? (
-              <div className="loading">記事を読み込み中...</div>
-            ) : (
-              <>
-                {/* フィルターセクション */}
-                <div className="filter-section">
-                  {/* 検索ボックス */}
-                  <div className="filter-group">
-                    <label className="filter-label">🔍 記事を検索</label>
-                    <input
-                      type="text"
-                      className="search-box"
-                      placeholder="タイトルやキーワードで検索..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-
-                  {/* カテゴリーフィルター */}
-                  <div className="filter-group">
-                    <label className="filter-label">📂 カテゴリー</label>
-                    <div className="filter-buttons">
-                      {['全て', 'AI', '画像生成', 'プロンプト', 'スクレイピング', 'フロントエンド', 'バックエンド', 'インフラ', 'その他'].map(category => (
-                        <button
-                          key={category}
-                          className={`filter-btn ${selectedCategory === category ? 'active' : ''}`}
-                          onClick={() => setSelectedCategory(category)}
-                        >
-                          {category} ({categoryCounts[category] || 0})
-                        </button>
-                      ))}
+              {/* 実績数値グリッド */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '2rem',
+                maxWidth: '1000px',
+                margin: '0 auto'
+              }}>
+                {[
+                  { value: '54', label: 'ECサイト監視', sub: '24時間365日自動運用' },
+                  { value: '99.9%', label: '稼働率', sub: '11ヶ月連続達成' },
+                  { value: '17年', label: 'PM経験', sub: 'エンタープライズBtoB' },
+                  { value: '10万+', label: '月間処理', sub: 'データ件数' }
+                ].map((stat, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: 'rgba(157, 78, 221, 0.1)',
+                      border: '1px solid rgba(157, 78, 221, 0.3)',
+                      borderRadius: '1rem',
+                      padding: '2rem',
+                      textAlign: 'center',
+                      transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(157, 78, 221, 0.15)';
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(157, 78, 221, 0.1)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div style={{
+                      fontSize: '3.5rem',
+                      fontWeight: 'bold',
+                      background: 'linear-gradient(135deg, #ffffff 0%, #c77dff 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      marginBottom: '0.5rem'
+                    }}>
+                      {stat.value}
+                    </div>
+                    <div style={{
+                      fontSize: '1.1rem',
+                      color: '#c77dff',
+                      fontWeight: '600',
+                      marginBottom: '0.25rem'
+                    }}>
+                      {stat.label}
+                    </div>
+                    <div style={{
+                      fontSize: '0.9rem',
+                      color: 'rgba(199, 125, 255, 0.7)'
+                    }}>
+                      {stat.sub}
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
-                  {/* プラットフォームフィルター */}
-                  <div className="filter-group">
-                    <label className="filter-label">🌐 プラットフォーム</label>
-                    <div className="filter-buttons">
-                      {['全て', 'Zenn', 'Qiita', 'note'].map(platform => (
-                        <button
-                          key={platform}
-                          className={`filter-btn ${selectedPlatform === platform ? 'active' : ''}`}
-                          onClick={() => setSelectedPlatform(platform)}
-                        >
-                          {platform} ({platformCounts[platform] || 0})
-                        </button>
-                      ))}
+          {/* ========== 2. プロジェクト ========== */}
+          <section id="projects" style={{
+            padding: '8rem 2rem',
+            background: 'rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+              <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                <h2 style={{
+                  fontSize: 'clamp(2.5rem, 6vw, 4rem)',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #c77dff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  marginBottom: '1rem'
+                }}>
+                  実績プロジェクト
+                </h2>
+                <p style={{
+                  fontSize: '1.2rem',
+                  color: 'rgba(199, 125, 255, 0.8)'
+                }}>
+                  本番運用レベルの技術実装と、確実なビジネス成果
+                </p>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(450px, 100%), 1fr))',
+                gap: '2.5rem'
+              }}>
+                {projects.map((project, index) => (
+                  <div
+                    key={project.id}
+                    style={{
+                      background: 'rgba(157, 78, 221, 0.08)',
+                      border: '1px solid rgba(157, 78, 221, 0.2)',
+                      borderRadius: '1.5rem',
+                      padding: '2.5rem',
+                      transition: 'all 0.4s',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(157, 78, 221, 0.12)';
+                      e.currentTarget.style.borderColor = 'rgba(157, 78, 221, 0.4)';
+                      e.currentTarget.style.transform = 'translateY(-8px)';
+                      e.currentTarget.style.boxShadow = '0 20px 50px rgba(157, 78, 221, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(157, 78, 221, 0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(157, 78, 221, 0.2)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    {/* プロジェクト番号 */}
+                    <div style={{
+                      display: 'inline-block',
+                      background: 'rgba(157, 78, 221, 0.2)',
+                      color: '#c77dff',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.85rem',
+                      fontWeight: 'bold',
+                      marginBottom: '1.5rem'
+                    }}>
+                      PROJECT {String(index + 1).padStart(2, '0')}
                     </div>
-                  </div>
 
-                  {/* 検索結果数 */}
-                  <div className="results-count">
-                    {filteredArticles.length > 0 ? (
-                      <>{filteredArticles.length}件の記事を表示中</>
-                    ) : (
-                      <>
-                        <div style={{ marginBottom: '1rem' }}>
-                          条件に一致する記事が見つかりませんでした
-                        </div>
-                        {(selectedCategory !== '全て' || selectedPlatform !== '全て' || searchQuery) && (
-                          <button
-                            className="filter-btn"
-                            onClick={() => {
-                              setSelectedCategory('全て');
-                              setSelectedPlatform('全て');
-                              setSearchQuery('');
-                            }}
+                    <h3 style={{
+                      fontSize: '1.6rem',
+                      fontWeight: 'bold',
+                      color: 'white',
+                      marginBottom: '1rem',
+                      lineHeight: 1.3
+                    }}>
+                      {project.title}
+                    </h3>
+
+                    <p style={{
+                      color: 'rgba(199, 125, 255, 0.9)',
+                      marginBottom: '2rem',
+                      lineHeight: 1.7
+                    }}>
+                      {project.description}
+                    </p>
+
+                    {/* メトリクス */}
+                    {project.metrics && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gap: '1rem',
+                        marginBottom: '1.5rem'
+                      }}>
+                        {project.metrics.map((metric, i) => (
+                          <div
+                            key={i}
                             style={{
-                              background: 'linear-gradient(135deg, var(--primary-pink), var(--primary-purple))',
-                              border: '1.5px solid var(--primary-pink)',
-                              fontWeight: 700,
+                              background: 'rgba(0, 0, 0, 0.3)',
+                              borderRadius: '0.75rem',
+                              padding: '1rem',
+                              textAlign: 'center'
                             }}
                           >
-                            🔄 フィルターをリセット
-                          </button>
-                        )}
-                      </>
+                            <div style={{
+                              fontSize: '1.8rem',
+                              fontWeight: 'bold',
+                              color: 'white',
+                              marginBottom: '0.25rem'
+                            }}>
+                              {metric.value}
+                            </div>
+                            <div style={{
+                              fontSize: '0.8rem',
+                              color: 'rgba(199, 125, 255, 0.8)'
+                            }}>
+                              {metric.label}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  </div>
-                </div>
 
-                {/* 記事一覧 */}
-                <div className="articles-grid">
-                  {filteredArticles.length > 0 ? (
-                    filteredArticles.map(article => (
-                    <div 
-                      key={article.id} 
-                      className="article-card glass"
-                      onClick={() => window.open(article.url, '_blank')}
-                    >
-                      {(article.thumbnail && article.platform !== 'note') && (
-                        <div className="article-thumbnail">
-                          <img 
-                            src={article.thumbnail} 
-                            alt={article.title}
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-                      <span 
-                        className="article-platform"
-                        style={{ background: getPlatformColor(article.platform) }}
-                      >
-                        {article.platform}
-                      </span>
-                      {/* カテゴリーバッジ追加 */}
-                      <span 
-                        className="article-category-badge"
-                        style={{ 
-                          display: 'inline-block',
-                          marginLeft: '0.5rem',
-                          padding: '0.5rem 1rem',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          background: 'rgba(255, 255, 255, 0.15)',
-                          border: '1px solid rgba(255, 255, 255, 0.3)',
+                    {/* ハイライト */}
+                    <ul style={{
+                      listStyle: 'none',
+                      padding: 0,
+                      marginBottom: '1.5rem'
+                    }}>
+                      {project.highlights.slice(0, 3).map((highlight, i) => (
+                        <li
+                          key={i}
+                          style={{
+                            color: 'rgba(199, 125, 255, 0.9)',
+                            marginBottom: '0.75rem',
+                            paddingLeft: '1.5rem',
+                            position: 'relative',
+                            fontSize: '0.95rem'
+                          }}
+                        >
+                          <span style={{
+                            position: 'absolute',
+                            left: 0,
+                            color: '#9d4edd',
+                            fontWeight: 'bold'
+                          }}>
+                            ✓
+                          </span>
+                          {highlight}
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* 技術スタック */}
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      {project.technologies.slice(0, 6).map((tech, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: '0.75rem',
+                            background: 'rgba(157, 78, 221, 0.25)',
+                            color: '#c77dff',
+                            padding: '0.4rem 0.9rem',
+                            borderRadius: '0.5rem',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* リンク */}
+                    {project.url && (
+                      <a
+                        href={project.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: '#9d4edd',
+                          textDecoration: 'none',
+                          fontSize: '0.95rem',
+                          fontWeight: '600',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
                         }}
                       >
-                        {article.category}
-                      </span>
-                      <h3 className="article-title">{article.title}</h3>
-                      <p className="article-excerpt">{article.excerpt}</p>
-                      <p className="article-date">
-                        {new Date(article.publishedAt).toLocaleDateString('ja-JP')}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.6 }}>
-                    {searchQuery || selectedCategory !== '全て' || selectedPlatform !== '全て' 
-                      ? '条件に一致する記事が見つかりませんでした' 
-                      : '記事が見つかりませんでした'}
+                        詳細を見る
+                        <span style={{ fontSize: '1.2rem' }}>→</span>
+                      </a>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            </>
-            )}
-          </div>
-        </section>
-      </main>
+            </div>
+          </section>
 
-      <footer>
-        <p>© 2025 AI Art Studio - Crystal Dreamscape</p>
-        <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-          🌸 Powered by Next.js + Canvas API
-        </p>
-      </footer>
+          {/* ========== 3. サービス概要 ========== */}
+          <section style={{
+            padding: '8rem 2rem'
+          }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+              <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                <h2 style={{
+                  fontSize: 'clamp(2.5rem, 6vw, 4rem)',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #c77dff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  marginBottom: '1rem'
+                }}>
+                  提供サービス
+                </h2>
+                <p style={{
+                  fontSize: '1.2rem',
+                  color: 'rgba(199, 125, 255, 0.8)'
+                }}>
+                  実績に基づく、確実なソリューション提供
+                </p>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(350px, 100%), 1fr))',
+                gap: '2.5rem',
+                marginBottom: '4rem'
+              }}>
+                {[
+                  {
+                    icon: '🔍',
+                    title: 'スクレイピングシステム構築',
+                    price: '80-150万円',
+                    period: '一括',
+                    features: [
+                      '54サイト統合実績',
+                      '99.9%稼働率保証',
+                      '24/7自動監視',
+                      'VPS/Docker完備'
+                    ]
+                  },
+                  {
+                    icon: '📊',
+                    title: 'BtoB PM支援',
+                    price: '60-100万円',
+                    period: '月額（週2-3日）',
+                    features: [
+                      '17年PM経験',
+                      'エンタープライズ折衝',
+                      '技術的意思決定',
+                      '実装まで理解'
+                    ]
+                  },
+                  {
+                    icon: '🧪',
+                    title: 'QA自動化構築',
+                    price: '50-80万円',
+                    period: '一括',
+                    features: [
+                      'Playwright実装',
+                      '93%成功率実績',
+                      'CI/CD統合',
+                      'AIテスト生成'
+                    ]
+                  }
+                ].map((service, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: 'rgba(157, 78, 221, 0.08)',
+                      border: '1px solid rgba(157, 78, 221, 0.2)',
+                      borderRadius: '1.5rem',
+                      padding: '2.5rem',
+                      transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(157, 78, 221, 0.12)';
+                      e.currentTarget.style.borderColor = 'rgba(157, 78, 221, 0.4)';
+                      e.currentTarget.style.transform = 'translateY(-6px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(157, 78, 221, 0.08)';
+                      e.currentTarget.style.borderColor = 'rgba(157, 78, 221, 0.2)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                      {service.icon}
+                    </div>
+
+                    <h3 style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 'bold',
+                      color: 'white',
+                      marginBottom: '1.5rem'
+                    }}>
+                      {service.title}
+                    </h3>
+
+                    <div style={{
+                      marginBottom: '2rem'
+                    }}>
+                      <div style={{
+                        fontSize: '2.5rem',
+                        fontWeight: 'bold',
+                        background: 'linear-gradient(135deg, #ffffff 0%, #c77dff 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                        marginBottom: '0.5rem'
+                      }}>
+                        {service.price}
+                      </div>
+                      <div style={{
+                        fontSize: '0.9rem',
+                        color: 'rgba(199, 125, 255, 0.7)'
+                      }}>
+                        {service.period}
+                      </div>
+                    </div>
+
+                    <ul style={{
+                      listStyle: 'none',
+                      padding: 0,
+                      margin: 0
+                    }}>
+                      {service.features.map((feature, j) => (
+                        <li
+                          key={j}
+                          style={{
+                            color: 'rgba(199, 125, 255, 0.9)',
+                            marginBottom: '0.75rem',
+                            paddingLeft: '1.5rem',
+                            position: 'relative'
+                          }}
+                        >
+                          <span style={{
+                            position: 'absolute',
+                            left: 0,
+                            color: '#9d4edd',
+                            fontWeight: 'bold'
+                          }}>
+                            ✓
+                          </span>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ textAlign: 'center' }}>
+                <Link
+                  href="/services"
+                  style={{
+                    background: 'linear-gradient(135deg, #9d4edd 0%, #c77dff 100%)',
+                    color: 'white',
+                    padding: '1.25rem 3rem',
+                    borderRadius: '0.75rem',
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                    boxShadow: '0 10px 30px rgba(157, 78, 221, 0.3)',
+                    transition: 'all 0.3s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 15px 40px rgba(157, 78, 221, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 10px 30px rgba(157, 78, 221, 0.3)';
+                  }}
+                >
+                  詳細を見る →
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* ========== 4. 技術記事 ========== */}
+          <section id="blog" style={{
+            padding: '8rem 2rem',
+            background: 'rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+              <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                <h2 style={{
+                  fontSize: 'clamp(2.5rem, 6vw, 4rem)',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #c77dff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  marginBottom: '1rem'
+                }}>
+                  技術記事
+                </h2>
+                <p style={{
+                  fontSize: '1.2rem',
+                  color: 'rgba(199, 125, 255, 0.8)'
+                }}>
+                  Zenn・Qiita・noteから自動収集（Next.js ISR）
+                </p>
+              </div>
+
+              {loading ? (
+                <div style={{
+                  textAlign: 'center',
+                  color: '#c77dff',
+                  fontSize: '1.2rem',
+                  padding: '4rem 0'
+                }}>
+                  記事を読み込み中...
+                </div>
+              ) : (
+                <>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(380px, 100%), 1fr))',
+                    gap: '2rem',
+                    marginBottom: '3rem'
+                  }}>
+                    {articles.slice(0, 6).map((article) => (
+                      <article
+                        key={article.id}
+                        style={{
+                          background: 'rgba(157, 78, 221, 0.08)',
+                          border: '1px solid rgba(157, 78, 221, 0.2)',
+                          borderRadius: '1rem',
+                          padding: '2rem',
+                          transition: 'all 0.3s',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(157, 78, 221, 0.12)';
+                          e.currentTarget.style.transform = 'translateY(-4px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(157, 78, 221, 0.08)';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <h3 style={{
+                          fontSize: '1.2rem',
+                          fontWeight: 'bold',
+                          color: 'white',
+                          marginBottom: '1rem',
+                          lineHeight: 1.4
+                        }}>
+                          {article.title}
+                        </h3>
+
+                        <p style={{
+                          color: 'rgba(199, 125, 255, 0.8)',
+                          fontSize: '0.95rem',
+                          lineHeight: 1.6,
+                          marginBottom: '1.5rem'
+                        }}>
+                          {article.excerpt}
+                        </p>
+
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '1rem'
+                        }}>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            background:
+                              article.platform === 'Zenn'
+                                ? 'rgba(59, 130, 246, 0.3)'
+                                : article.platform === 'Qiita'
+                                ? 'rgba(16, 185, 129, 0.3)'
+                                : 'rgba(168, 85, 247, 0.3)',
+                            color: 'white',
+                            padding: '0.35rem 0.9rem',
+                            borderRadius: '0.5rem',
+                            fontWeight: '500'
+                          }}>
+                            {article.platform}
+                          </span>
+
+                          <span style={{
+                            fontSize: '0.85rem',
+                            color: 'rgba(199, 125, 255, 0.7)'
+                          }}>
+                            {new Date(article.publishedAt).toLocaleDateString('ja-JP')}
+                          </span>
+                        </div>
+
+                        <a
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: '#9d4edd',
+                            textDecoration: 'none',
+                            fontSize: '0.95rem',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                          }}
+                        >
+                          記事を読む
+                          <span style={{ fontSize: '1.1rem' }}>→</span>
+                        </a>
+                      </article>
+                    ))}
+                  </div>
+
+                  <div style={{ textAlign: 'center' }}>
+                    <Link
+                      href="/blog"
+                      style={{
+                        color: '#c77dff',
+                        fontSize: '1.1rem',
+                        textDecoration: 'none',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      すべての記事を見る（{articles.length}件）
+                      <span style={{ fontSize: '1.3rem' }}>→</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* ========== 5. 問い合わせCTA ========== */}
+          <section style={{
+            padding: '8rem 2rem',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              maxWidth: '900px',
+              margin: '0 auto',
+              background: 'linear-gradient(135deg, rgba(157, 78, 221, 0.15) 0%, rgba(199, 125, 255, 0.15) 100%)',
+              border: '1px solid rgba(157, 78, 221, 0.3)',
+              borderRadius: '2rem',
+              padding: 'clamp(3rem, 8vw, 5rem)'
+            }}>
+              <h2 style={{
+                fontSize: 'clamp(2rem, 5vw, 3rem)',
+                fontWeight: 'bold',
+                color: 'white',
+                marginBottom: '1.5rem'
+              }}>
+                まずは無料相談から
+              </h2>
+
+              <p style={{
+                fontSize: 'clamp(1rem, 2.5vw, 1.3rem)',
+                color: 'rgba(199, 125, 255, 0.9)',
+                marginBottom: '3rem',
+                lineHeight: 1.7
+              }}>
+                54サイト運用実績、PM経験17年の知見で<br />
+                御社の課題を解決します。<br />
+                <strong style={{ color: '#c77dff' }}>48時間以内に返信</strong>いたします。
+              </p>
+
+              <Link
+                href="/contact"
+                style={{
+                  background: 'linear-gradient(135deg, #9d4edd 0%, #c77dff 100%)',
+                  color: 'white',
+                  padding: '1.5rem 4rem',
+                  borderRadius: '1rem',
+                  fontWeight: 'bold',
+                  fontSize: '1.3rem',
+                  textDecoration: 'none',
+                  display: 'inline-block',
+                  boxShadow: '0 15px 40px rgba(157, 78, 221, 0.4)',
+                  transition: 'all 0.3s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 20px 50px rgba(157, 78, 221, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 15px 40px rgba(157, 78, 221, 0.4)';
+                }}
+              >
+                今すぐ相談する →
+              </Link>
+            </div>
+          </section>
+        </main>
+
+        {/* ========== フッター ========== */}
+        <footer style={{
+          padding: '3rem 2rem',
+          textAlign: 'center',
+          borderTop: '1px solid rgba(157, 78, 221, 0.2)',
+          color: 'rgba(199, 125, 255, 0.7)'
+        }}>
+          <p style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
+            © 2025 H・M Engineering
+          </p>
+          <p style={{ fontSize: '0.9rem' }}>
+            製造業PM × フルスタック実装力
+          </p>
+        </footer>
+      </div>
     </>
   );
 }
