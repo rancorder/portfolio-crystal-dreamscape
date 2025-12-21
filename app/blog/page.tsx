@@ -1,4 +1,4 @@
-// app/blog/page.tsx
+// app/blog/page.tsx - RSS統合版
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +10,8 @@ interface Article {
   url: string;
   excerpt: string;
   publishedAt: string;
-  platform: string;
+  platform: 'Zenn' | 'Qiita' | 'note';
+  thumbnail?: string;
 }
 
 export default function BlogPage() {
@@ -18,16 +19,42 @@ export default function BlogPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/articles')
-      .then(res => res.json())
-      .then(data => {
-        setArticles(data.articles || []);
+    const fetchArticles = async () => {
+      try {
+        // Zenn・Qiita・noteから並列取得
+        const [zennRes, qiitaRes, noteRes] = await Promise.all([
+          fetch('/api/rss/zenn'),
+          fetch('/api/rss/qiita'),
+          fetch('/api/rss/note')
+        ]);
+
+        const [zennData, qiitaData, noteData] = await Promise.all([
+          zennRes.json(),
+          qiitaRes.json(),
+          noteRes.json()
+        ]);
+
+        // 全記事を統合
+        const allArticles = [
+          ...(zennData.articles || []),
+          ...(qiitaData.articles || []),
+          ...(noteData.articles || [])
+        ];
+
+        // 日付でソート（新しい順）
+        allArticles.sort((a, b) => 
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        );
+
+        setArticles(allArticles);
         setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
+      } catch (error) {
+        console.error('Failed to fetch articles:', error);
         setLoading(false);
-      });
+      }
+    };
+
+    fetchArticles();
   }, []);
 
   return (
@@ -129,6 +156,16 @@ export default function BlogPage() {
             Zenn・Qiita・noteから自動収集（Next.js ISR）<br />
             実装力の証明として、1時間ごとに自動更新
           </p>
+
+          {!loading && (
+            <p style={{
+              marginTop: '1rem',
+              fontSize: '1rem',
+              color: 'rgba(199, 125, 255, 0.7)'
+            }}>
+              全{articles.length}件の記事
+            </p>
+          )}
         </div>
 
         {/* 記事一覧 */}
@@ -239,6 +276,7 @@ export default function BlogPage() {
                       alignItems: 'center',
                       gap: '0.5rem'
                     }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     記事を読む
                     <span style={{ fontSize: '1.1rem' }}>→</span>
