@@ -1,4 +1,4 @@
-// app/blog/page.tsx - RSS統合版
+// app/blog/page.tsx - CORS回避プロキシ版
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -18,38 +18,110 @@ export default function BlogPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Qiita API直接取得
+  async function fetchQiita(username: string): Promise<Article[]> {
+    try {
+      const res = await fetch(`https://qiita.com/api/v2/users/${username}/items?per_page=20`);
+      const items = await res.json();
+      
+      return items.map((item: any, i: number) => ({
+        id: `qiita-${i}`,
+        title: item.title,
+        url: item.url,
+        excerpt: (item.body || '').replace(/#/g, '').substring(0, 150) + '...',
+        publishedAt: item.created_at,
+        platform: 'Qiita' as const,
+        thumbnail: item.user?.profile_image_url || undefined,
+      }));
+    } catch (error) {
+      console.error('[Qiita] Error:', error);
+      return [];
+    }
+  }
+
+  // RSS→JSONプロキシ経由取得
+  async function fetchViaProxy(rssUrl: string, platform: 'Zenn' | 'note'): Promise<Article[]> {
+    try {
+      const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+      
+      const res = await fetch(proxyUrl);
+      const data = await res.json();
+      
+      if (data.status !== 'ok') {
+        throw new Error(`RSS2JSON error: ${data.message}`);
+      }
+      
+      return data.items.slice(0, 10).map((item: any, i: number) => {
+        const cleanDescription = (item.description || '')
+          .replace(/<[^>]*>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .trim();
+        
+        let thumbnail: string | undefined;
+        
+        if (item.thumbnail) {
+          thumbnail = item.thumbnail;
+        } else if (item.enclosure?.link) {
+          thumbnail = item.enclosure.link;
+        } else if (item.content) {
+          const imgMatch = item.content.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch) {
+            thumbnail = imgMatch[1];
+          }
+        } else if (item.description) {
+          const imgMatch = item.description.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch) {
+            thumbnail = imgMatch[1];
+          }
+        }
+        
+        if (platform === 'note' && thumbnail && !thumbnail.startsWith('http')) {
+          thumbnail = `https://assets.st-note.com${thumbnail}`;
+        }
+        
+        return {
+          id: `${platform.toLowerCase()}-${i}`,
+          title: item.title || 'No Title',
+          url: item.link || '#',
+          excerpt: cleanDescription.substring(0, 150) + (cleanDescription.length > 150 ? '...' : ''),
+          publishedAt: item.pubDate || new Date().toISOString(),
+          platform,
+          thumbnail,
+        };
+      });
+    } catch (error) {
+      console.error(`[${platform}] Error:`, error);
+      return [];
+    }
+  }
+
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        // Zenn・Qiita・noteから並列取得
-        const [zennRes, qiitaRes, noteRes] = await Promise.all([
-          fetch('/api/rss/zenn'),
-          fetch('/api/rss/qiita'),
-          fetch('/api/rss/note')
-        ]);
-
-        const [zennData, qiitaData, noteData] = await Promise.all([
-          zennRes.json(),
-          qiitaRes.json(),
-          noteRes.json()
-        ]);
-
-        // 全記事を統合
-        const allArticles = [
-          ...(zennData.articles || []),
-          ...(qiitaData.articles || []),
-          ...(noteData.articles || [])
+        console.log('[Client] Fetching articles...');
+        
+        const fetchers = [
+          fetchQiita('rancorder'),
+          fetchViaProxy('https://zenn.dev/rancorder/feed', 'Zenn'),
+          fetchViaProxy('https://note.com/rancorder/rss', 'note'),
         ];
-
-        // 日付でソート（新しい順）
+        
+        const results = await Promise.allSettled(fetchers);
+        
+        const allArticles = results
+          .filter((r) => r.status === 'fulfilled')
+          .flatMap((r: any) => r.value);
+        
+        // 日付でソート
         allArticles.sort((a, b) => 
           new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
         );
-
+        
+        console.log(`[Client] Total articles: ${allArticles.length}`);
         setArticles(allArticles);
         setLoading(false);
       } catch (error) {
-        console.error('Failed to fetch articles:', error);
+        console.error('[Client] Failed to fetch articles:', error);
         setLoading(false);
       }
     };
@@ -153,11 +225,11 @@ export default function BlogPage() {
             color: 'rgba(199, 125, 255, 0.9)',
             lineHeight: 1.7
           }}>
-            Zenn・Qiita・noteから自動収集（Next.js ISR）<br />
-            実装力の証明として、1時間ごとに自動更新
+            Zenn・Qiita・noteから自動収集<br />
+            クライアントサイドで直接取得（CORS回避）
           </p>
 
-          {!loading && (
+          {!loading && articles.length > 0 && (
             <p style={{
               marginTop: '1rem',
               fontSize: '1rem',
