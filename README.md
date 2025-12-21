@@ -40,8 +40,8 @@
 
 ```bash
 # リポジトリクローン
-git clone https://github.com/rancorder/portfolio-nextjs.git
-cd portfolio-nextjs
+git clone https://github.com/rancorder/portfolio-crystal-dreamscape.git
+cd /portfolio-crystal-dreamscape
 
 # 依存関係インストール
 npm install
