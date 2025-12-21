@@ -1,4 +1,4 @@
-// app/page.tsx - Performance 95点確実版（完全クリーン）
+// app/page.tsx - Performance最適化版
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -21,31 +21,42 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('全て');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('全て');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // 🌸 桜吹雪のON/OFF制御（デフォルト: OFF）
+  const [showSakura, setShowSakura] = useState(false);
 
+  // カテゴリー自動判定
   const categorizeArticle = (article: Article): string => {
     const text = (article.title + ' ' + article.excerpt).toLowerCase();
     
     if (/ai|人工知能|機械学習|machine learning|深層学習|deep learning|llm|gpt|claude|chatgpt|gemini|openai|anthropic|transformer|ニューラルネットワーク|neural network|自然言語処理|nlp/.test(text)) {
       return 'AI';
     }
+    
     if (/画像生成|image generation|stable diffusion|midjourney|dall-e|dalle|画像ai|生成ai|text to image|img2img|diffusion|画像合成|ai art|ai イラスト/.test(text)) {
       return '画像生成';
     }
+    
     if (/プロンプト|prompt|プロンプトエンジニアリング|prompt engineering|プロンプトデザイン|few-shot|zero-shot|chain of thought|cot|プロンプト設計|指示文/.test(text)) {
       return 'プロンプト';
     }
+    
     if (/スクレイピング|scraping|scrape|クローリング|crawling|crawler|beautiful soup|beautifulsoup|bs4|scrapy|selenium|puppeteer|playwright|cheerio|web scraping|データ収集|データ抽出|自動収集|webクローラー|クローラー|データ取得|情報収集|サイト解析/.test(text)) {
       return 'スクレイピング';
     }
+    
     if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux|styled|emotion|component|hooks|フロントエンド|フロント/.test(text)) {
       return 'フロントエンド';
     }
+    
     if (/node\.?js|express|api|database|sql|mongodb|postgresql|graphql|backend|server|prisma|nest\.?js|rest|fastapi|django|flask|バックエンド|サーバー|データベース|db/.test(text)) {
       return 'バックエンド';
     }
+    
     if (/docker|kubernetes|aws|gcp|azure|ci\/cd|terraform|github actions|vercel|netlify|deploy|infra|container|k8s|cloudformation|インフラ|デプロイ|クラウド/.test(text)) {
       return 'インフラ';
     }
+    
     return 'その他';
   };
 
@@ -56,14 +67,23 @@ export default function HomePage() {
     }));
     
     return articlesWithCategory.filter(article => {
-      if (selectedCategory !== '全て' && article.category !== selectedCategory) return false;
-      if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) return false;
+      if (selectedCategory !== '全て' && article.category !== selectedCategory) {
+        return false;
+      }
+      
+      if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) {
+        return false;
+      }
+      
       if (searchQuery.trim() !== '') {
         const query = searchQuery.toLowerCase();
         const matchTitle = article.title.toLowerCase().includes(query);
         const matchExcerpt = article.excerpt.toLowerCase().includes(query);
-        if (!matchTitle && !matchExcerpt) return false;
+        if (!matchTitle && !matchExcerpt) {
+          return false;
+        }
       }
+      
       return true;
     });
   }, [articles, selectedCategory, selectedPlatform, searchQuery]);
@@ -71,28 +91,194 @@ export default function HomePage() {
   const categoryCounts = React.useMemo(() => {
     const counts: Record<string, number> = {
       '全て': articles.length,
-      'AI': 0, '画像生成': 0, 'プロンプト': 0, 'スクレイピング': 0,
-      'フロントエンド': 0, 'バックエンド': 0, 'インフラ': 0, 'その他': 0,
+      'AI': 0,
+      '画像生成': 0,
+      'プロンプト': 0,
+      'スクレイピング': 0,
+      'フロントエンド': 0,
+      'バックエンド': 0,
+      'インフラ': 0,
+      'その他': 0,
     };
+    
     articles.forEach(article => {
       const category = categorizeArticle(article);
       counts[category]++;
     });
+    
     return counts;
   }, [articles]);
 
   const platformCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { '全て': articles.length, 'Zenn': 0, 'Qiita': 0, 'note': 0 };
-    articles.forEach(article => { counts[article.platform]++; });
+    const counts: Record<string, number> = {
+      '全て': articles.length,
+      'Zenn': 0,
+      'Qiita': 0,
+      'note': 0,
+    };
+    
+    articles.forEach(article => {
+      counts[article.platform]++;
+    });
+    
     return counts;
   }, [articles]);
 
+  // 🌸 Canvas桜吹雪エフェクト（オプション）
   useEffect(() => {
-    fetchArticles();
+    if (!showSakura) return; // OFFなら何もしない
+
+    const canvas = document.getElementById('canvas-sakura') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      color: string;
+      alpha: number;
+      rotation: number;
+      rotationSpeed: number;
+    }
+
+    const particles: Particle[] = [];
+    const particleCount = 80; // 150 → 80に削減（パフォーマンス改善）
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: Math.random() * 1.5 + 0.5,
+        radius: Math.random() * 4 + 2,
+        color: getRandomColor(),
+        alpha: Math.random() * 0.5 + 0.5,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+      });
+    }
+
+    function getRandomColor(): string {
+      const colors = [
+        'rgba(255, 183, 213, ',
+        'rgba(255, 255, 255, ',
+        'rgba(201, 160, 220, ',
+        'rgba(165, 216, 255, ',
+      ];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function drawSakura(x: number, y: number, radius: number, color: string, alpha: number, rotation: number) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.globalAlpha = alpha;
+
+      for (let i = 0; i < 5; i++) {
+        ctx.save();
+        ctx.rotate((Math.PI * 2 * i) / 5);
+        
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+        gradient.addColorStop(0, color + '1)');
+        gradient.addColorStop(0.5, color + '0.8)');
+        gradient.addColorStop(1, color + '0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(0, -radius * 0.3, radius * 0.6, radius, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    let mouseX = 0;
+    let mouseY = 0;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+
+    let animationId: number;
+    let frameCount = 0;
+    
+    function animate() {
+      // フレームスキップ（60fps → 30fps）
+      frameCount++;
+      if (frameCount % 2 !== 0) {
+        animationId = requestAnimationFrame(animate);
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p, index) => {
+        p.y += p.vy;
+        p.x += p.vx;
+        p.x += Math.sin(Date.now() * 0.001 + index) * 0.3;
+        p.rotation += p.rotationSpeed;
+
+        const dx = mouseX - p.x;
+        const dy = mouseY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 100) {
+          p.x -= (dx / dist) * 2;
+          p.y -= (dy / dist) * 2;
+        }
+
+        if (p.y > canvas.height + 50) {
+          p.y = -50;
+          p.x = Math.random() * canvas.width;
+        }
+
+        if (p.x < -50) p.x = canvas.width + 50;
+        if (p.x > canvas.width + 50) p.x = -50;
+
+        drawSakura(p.x, p.y, p.radius, p.color, p.alpha, p.rotation);
+      });
+
+      animationId = requestAnimationFrame(animate);
+    }
+    animate();
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      document.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [showSakura]);
+
+  // 記事取得（遅延ロード - Performance改善）
+  useEffect(() => {
+    // 100ms遅延で初回レンダリングをブロックしない
+    const timer = setTimeout(() => {
+      fetchArticles();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchArticles = async () => {
     try {
+      console.log('[Client] Fetching articles...');
+      
       const fetchers = [
         fetchQiita('rancorder'),
         fetchViaProxy('https://zenn.dev/supermassu/feed', 'Zenn'),
@@ -100,6 +286,7 @@ export default function HomePage() {
       ];
       
       const results = await Promise.allSettled(fetchers);
+      
       const all = results
         .filter((r): r is PromiseFulfilledResult<Article[]> => r.status === 'fulfilled')
         .flatMap(r => r.value);
@@ -108,6 +295,7 @@ export default function HomePage() {
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
       
+      console.log(`[Client] Loaded ${sorted.length} items`);
       setArticles(sorted);
       setLoading(false);
     } catch (error) {
@@ -120,6 +308,7 @@ export default function HomePage() {
     try {
       const res = await fetch(`https://qiita.com/api/v2/users/${username}/items?per_page=10`);
       const data = await res.json();
+      
       return data.map((item: any) => ({
         id: item.id,
         title: item.title,
@@ -127,28 +316,67 @@ export default function HomePage() {
         excerpt: item.body.substring(0, 150) + '...',
         publishedAt: item.created_at,
         platform: 'Qiita' as const,
-        thumbnail: item.user?.profile_image_url,
+        thumbnail: item.user?.profile_image_url || undefined,
       }));
-    } catch { return []; }
+    } catch (error) {
+      console.error('[Qiita] Error:', error);
+      return [];
+    }
   }
 
   async function fetchViaProxy(rssUrl: string, platform: 'Zenn' | 'note'): Promise<Article[]> {
     try {
       const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+      
       const res = await fetch(proxyUrl);
       const data = await res.json();
-      if (data.status !== 'ok') throw new Error('RSS2JSON error');
       
-      return data.items.slice(0, 10).map((item: any, i: number) => ({
-        id: `${platform.toLowerCase()}-${i}`,
-        title: item.title || 'No Title',
-        url: item.link || '#',
-        excerpt: (item.description || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().substring(0, 150) + '...',
-        publishedAt: item.pubDate || new Date().toISOString(),
-        platform,
-        thumbnail: item.thumbnail || item.enclosure?.link,
-      }));
-    } catch { return []; }
+      if (data.status !== 'ok') {
+        throw new Error(`RSS2JSON error: ${data.message}`);
+      }
+      
+      return data.items.slice(0, 10).map((item: any, i: number) => {
+        const cleanDescription = (item.description || '')
+          .replace(/<[^>]*>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .trim();
+        
+        let thumbnail: string | undefined;
+        
+        if (item.thumbnail) {
+          thumbnail = item.thumbnail;
+        } else if (item.enclosure?.link) {
+          thumbnail = item.enclosure.link;
+        } else if (item.content) {
+          const imgMatch = item.content.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch) {
+            thumbnail = imgMatch[1];
+          }
+        } else if (item.description) {
+          const imgMatch = item.description.match(/<img[^>]+src=["']([^"']+)["']/i);
+          if (imgMatch) {
+            thumbnail = imgMatch[1];
+          }
+        }
+        
+        if (platform === 'note' && thumbnail && !thumbnail.startsWith('http')) {
+          thumbnail = `https://assets.st-note.com${thumbnail}`;
+        }
+        
+        return {
+          id: `${platform.toLowerCase()}-${i}`,
+          title: item.title || 'No Title',
+          url: item.link || '#',
+          excerpt: cleanDescription.substring(0, 150) + (cleanDescription.length > 150 ? '...' : ''),
+          publishedAt: item.pubDate || new Date().toISOString(),
+          platform,
+          thumbnail,
+        };
+      });
+    } catch (error) {
+      console.error(`[${platform}] Error:`, error);
+      return [];
+    }
   }
 
   const getPlatformColor = (platform: string) => {
@@ -156,7 +384,7 @@ export default function HomePage() {
       case 'Zenn': return 'linear-gradient(135deg, #3EA8FF, #50C0FF)';
       case 'Qiita': return 'linear-gradient(135deg, #55C500, #7AD929)';
       case 'note': return 'linear-gradient(135deg, #41C9B4, #5DD9C6)';
-      default: return 'linear-gradient(135deg, #FFB7D5, #C9A0DC)';
+      default: return 'linear-gradient(135deg, var(--primary-pink), var(--primary-purple))';
     }
   };
 
@@ -176,16 +404,147 @@ export default function HomePage() {
           --text-light: #FFFFFF;
           --glass-bg: rgba(255, 255, 255, 0.12);
           --glass-border: rgba(255, 255, 255, 0.25);
-          --bg-dark: #3D2B5C;
-          --bg-mid: #5C4A7A;
         }
 
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-mid) 50%, var(--bg-dark) 100%);
+          font-family: 'Josefin Sans', sans-serif;
+          background: linear-gradient(135deg, 
+            #3D2B5C 0%, #4A3368 20%, #5C4A7A 40%, 
+            #4A3368 60%, #3D2B5C 80%, #2E1F47 100%
+          );
+          background-size: 400% 400%;
+          animation: gradientShift 15s ease infinite;
           color: var(--text-light);
           min-height: 100vh;
           overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: 
+            radial-gradient(circle at 20% 30%, rgba(255, 183, 213, 0.15) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(165, 216, 255, 0.12) 0%, transparent 40%);
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        body::after {
+          content: '⛄';
+          position: fixed;
+          bottom: 5%;
+          right: 5%;
+          font-size: 8rem;
+          opacity: 0.15;
+          pointer-events: none;
+          z-index: 1;
+          animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+
+        .winter-decoration-left {
+          position: fixed;
+          top: 10%;
+          left: 3%;
+          font-size: 6rem;
+          opacity: 0.12;
+          pointer-events: none;
+          z-index: 1;
+          animation: float 8s ease-in-out infinite;
+          animation-delay: 1s;
+        }
+
+        .winter-decoration-tree {
+          position: fixed;
+          top: 50%;
+          right: 2%;
+          font-size: 5rem;
+          opacity: 0.1;
+          pointer-events: none;
+          z-index: 1;
+          animation: float 7s ease-in-out infinite;
+          animation-delay: 2s;
+        }
+
+        /* 桜吹雪ボタン */
+        .sakura-toggle {
+          position: fixed;
+          bottom: 2rem;
+          left: 2rem;
+          z-index: 100;
+          padding: 1rem 2rem;
+          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple));
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 50px;
+          color: white;
+          font-size: 1rem;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 8px 24px rgba(255, 183, 213, 0.4);
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+        }
+
+        .sakura-toggle:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 32px rgba(255, 183, 213, 0.6);
+        }
+
+        .sakura-toggle.active {
+          background: linear-gradient(135deg, #FF69B4, #FF1493);
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 8px 24px rgba(255, 183, 213, 0.4); }
+          50% { box-shadow: 0 8px 32px rgba(255, 105, 180, 0.8); }
+        }
+
+        .sakura-warning {
+          position: fixed;
+          bottom: 6rem;
+          left: 2rem;
+          z-index: 99;
+          padding: 0.8rem 1.5rem;
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 20px;
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 0.85rem;
+          max-width: 280px;
+          opacity: 0;
+          animation: fadeInOut 4s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+          0%, 100% { opacity: 0; }
+          10%, 90% { opacity: 1; }
+        }
+
+        #canvas-sakura {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 2;
+          pointer-events: none;
+          opacity: ${showSakura ? '1' : '0'};
+          transition: opacity 0.5s ease;
         }
 
         .glass {
@@ -194,12 +553,18 @@ export default function HomePage() {
           border: 1.5px solid var(--glass-border);
           border-radius: 24px;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          position: relative;
+          overflow: hidden;
         }
 
         .container {
           max-width: 1400px;
           margin: 0 auto;
           padding: 0 2rem;
+          position: relative;
+          z-index: 3;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         header {
@@ -209,7 +574,7 @@ export default function HomePage() {
           right: 0;
           z-index: 100;
           padding: 1.5rem 3rem;
-          background: rgba(61, 43, 92, 0.95);
+          background: rgba(61, 43, 92, 0.4);
           backdrop-filter: blur(15px);
           border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         }
@@ -223,12 +588,15 @@ export default function HomePage() {
         }
 
         .logo {
-          font-size: 1.8rem;
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 2rem;
           font-weight: 700;
-          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple), var(--primary-blue));
+          background: linear-gradient(135deg, 
+            var(--primary-pink), var(--primary-purple), var(--primary-blue)
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-          letter-spacing: 1px;
+          letter-spacing: 2px;
         }
 
         .nav-links {
@@ -241,7 +609,7 @@ export default function HomePage() {
           color: var(--text-light);
           text-decoration: none;
           font-weight: 600;
-          transition: color 0.3s ease;
+          transition: all 0.3s ease;
         }
 
         .nav-links a:hover {
@@ -255,74 +623,80 @@ export default function HomePage() {
           justify-content: center;
           padding: 8rem 2rem 4rem;
           text-align: center;
+          z-index: 3;
         }
 
         .hero-title {
-          font-size: clamp(2.5rem, 7vw, 5rem);
+          font-family: 'Cormorant Garamond', serif;
+          font-size: clamp(3rem, 8vw, 6rem);
           font-weight: 700;
           margin-bottom: 2rem;
-          background: linear-gradient(135deg, #FFB7D5, #F5C2E7, #C9A0DC, #A5D8FF);
+          background: linear-gradient(135deg, 
+            #FFB7D5, #F5C2E7, #C9A0DC, #A5D8FF, #D4E4FF
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
+          background-size: 200% auto;
+          animation: shimmer 5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
         }
 
         .hero-subtitle {
-          font-size: clamp(1.1rem, 2.3vw, 1.6rem);
+          font-size: clamp(1.2rem, 2.5vw, 1.8rem);
           margin-bottom: 3rem;
           opacity: 0.9;
-          font-weight: 400;
-        }
-
-        .performance-badge {
-          display: inline-block;
-          padding: 0.8rem 1.8rem;
-          background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
-          border: 2px solid rgba(76, 175, 80, 0.5);
-          border-radius: 50px;
-          color: #A5D6A7;
-          font-size: 0.95rem;
-          font-weight: 700;
-          margin-top: 1rem;
-          backdrop-filter: blur(10px);
         }
 
         .blog-section {
-          padding: 6rem 2rem;
+          padding: 8rem 2rem;
+          position: relative;
+          z-index: 3;
         }
 
         .section-title {
-          font-size: clamp(2rem, 4.5vw, 3.5rem);
+          font-family: 'Cormorant Garamond', serif;
+          font-size: clamp(2.5rem, 5vw, 4rem);
           text-align: center;
-          margin-bottom: 1.5rem;
-          background: linear-gradient(135deg, var(--primary-pink), var(--primary-purple), var(--primary-blue));
+          margin-bottom: 2rem;
+          background: linear-gradient(135deg, 
+            var(--primary-pink), var(--primary-purple), var(--primary-blue)
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-          font-weight: 700;
         }
 
         .section-subtitle {
           text-align: center;
           opacity: 0.85;
-          margin-bottom: 3.5rem;
-          font-size: 1.05rem;
+          margin-bottom: 4rem;
+          font-size: 1.1rem;
         }
 
         .articles-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
-          gap: 2rem;
-          margin-top: 3rem;
+          gap: 2.5rem;
+          margin-top: 4rem;
+          width: 100%;
         }
 
         .article-card {
-          padding: 2rem;
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          padding: 2.5rem;
+          transition: all 0.4s ease;
           cursor: pointer;
+          overflow: hidden;
+          position: relative;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .article-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 16px 48px rgba(255, 183, 213, 0.3);
+          transform: translateY(-12px) scale(1.02);
+          box-shadow: 0 20px 60px rgba(255, 183, 213, 0.5);
         }
 
         .article-thumbnail {
@@ -338,6 +712,11 @@ export default function HomePage() {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          transition: transform 0.4s ease;
+        }
+
+        .article-card:hover .article-thumbnail img {
+          transform: scale(1.05);
         }
 
         .article-platform {
@@ -350,25 +729,18 @@ export default function HomePage() {
           color: white;
         }
 
-        .article-category {
-          display: inline-block;
-          margin-left: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          background: rgba(255, 255, 255, 0.15);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
         .article-title {
-          font-size: 1.3rem;
+          font-size: 1.4rem;
           font-weight: 700;
           margin-bottom: 1rem;
           padding: 0 0.5rem;
           color: var(--primary-pink);
           line-height: 1.5;
           word-break: break-word;
+          overflow-wrap: break-word;
+          hyphens: auto;
+          max-width: 100%;
+          white-space: normal;
         }
 
         .article-excerpt {
@@ -393,8 +765,12 @@ export default function HomePage() {
         }
 
         .filter-section {
-          margin-bottom: 2.5rem;
+          margin-bottom: 3rem;
           padding: 2rem;
+          background: var(--glass-bg);
+          backdrop-filter: blur(20px) saturate(150%);
+          border: 1.5px solid var(--glass-border);
+          border-radius: 20px;
         }
 
         .filter-group {
@@ -483,25 +859,52 @@ export default function HomePage() {
         }
 
         @media (max-width: 768px) {
-          .articles-grid {
+          .articles-grid { 
             grid-template-columns: 1fr;
             gap: 1.5rem;
+            margin-top: 2rem;
           }
           
           .article-card {
-            padding: 1.5rem;
+            padding: 1rem;
+            overflow: hidden;
+            width: 100%;
           }
           
           .article-thumbnail {
             height: 150px;
+            margin-bottom: 1rem;
+            border-radius: 12px;
           }
           
           .article-title {
-            font-size: 1.1rem;
+            font-size: 1rem;
+            margin-bottom: 0.8rem;
+            line-height: 1.6;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+          }
+          
+          .article-excerpt {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+          }
+          
+          .article-platform {
+            font-size: 0.7rem;
+            padding: 0.4rem 1rem;
+            margin-bottom: 0.8rem;
+          }
+          
+          .article-date {
+            font-size: 0.75rem;
           }
           
           .container {
             padding: 0 1rem;
+            width: 100%;
           }
           
           .blog-section {
@@ -513,11 +916,15 @@ export default function HomePage() {
           }
           
           .logo {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
           }
-
+          
           .nav-links {
             gap: 1.5rem;
+          }
+          
+          .nav-links a {
+            font-size: 0.9rem;
           }
 
           .filter-section {
@@ -530,15 +937,74 @@ export default function HomePage() {
 
           .filter-btn {
             padding: 0.5rem 1rem;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
           }
 
           .search-box {
-            padding: 0.9rem 1.3rem;
-            font-size: 0.95rem;
+            padding: 0.8rem 1.2rem;
+            font-size: 0.9rem;
+          }
+
+          .filter-label {
+            font-size: 0.85rem;
+          }
+
+          .sakura-toggle {
+            bottom: 1rem;
+            left: 1rem;
+            padding: 0.8rem 1.5rem;
+            font-size: 0.9rem;
+          }
+
+          .sakura-warning {
+            bottom: 4.5rem;
+            left: 1rem;
+            max-width: 240px;
+            font-size: 0.75rem;
+            padding: 0.6rem 1.2rem;
+          }
+
+          body::after {
+            font-size: 4rem;
+            bottom: 3%;
+            right: 3%;
+            opacity: 0.1;
+          }
+          
+          .winter-decoration-left {
+            font-size: 3rem;
+            top: 5%;
+            left: 2%;
+            opacity: 0.08;
+          }
+          
+          .winter-decoration-tree {
+            font-size: 2.5rem;
+            opacity: 0.08;
           }
         }
       `}</style>
+
+      <div className="winter-decoration-left">⛄</div>
+      <div className="winter-decoration-tree">🎄</div>
+
+      {/* 🌸 桜吹雪トグルボタン */}
+      <button 
+        className={`sakura-toggle ${showSakura ? 'active' : ''}`}
+        onClick={() => setShowSakura(!showSakura)}
+        aria-label="桜吹雪エフェクトの切り替え"
+      >
+        {showSakura ? '🌸 桜吹雪 ON' : '🌸 桜吹雪を見る'}
+      </button>
+
+      {/* パフォーマンス警告（初回のみ） */}
+      {showSakura && (
+        <div className="sakura-warning" key={Date.now()}>
+          ⚠️ エフェクトON中はパフォーマンスが低下します
+        </div>
+      )}
+
+      <canvas id="canvas-sakura"></canvas>
 
       <header>
         <nav>
@@ -558,9 +1024,6 @@ export default function HomePage() {
             <p className="hero-subtitle">
               Zenn・Qiita・note から自動収集 | Next.js ISR実装
             </p>
-            <div className="performance-badge">
-              ⚡ Performance Optimized - Lighthouse 95+
-            </div>
           </div>
         </section>
 
@@ -573,7 +1036,7 @@ export default function HomePage() {
               <div className="loading">記事を読み込み中...</div>
             ) : (
               <>
-                <div className="filter-section glass">
+                <div className="filter-section">
                   <div className="filter-group">
                     <label className="filter-label">🔍 記事を検索</label>
                     <input
@@ -646,19 +1109,22 @@ export default function HomePage() {
                 </div>
 
                 <div className="articles-grid">
-                  {filteredArticles.map(article => (
+                  {filteredArticles.length > 0 ? (
+                    filteredArticles.map(article => (
                     <div 
                       key={article.id} 
                       className="article-card glass"
                       onClick={() => window.open(article.url, '_blank')}
                     >
-                      {article.thumbnail && article.platform !== 'note' && (
+                      {(article.thumbnail && article.platform !== 'note') && (
                         <div className="article-thumbnail">
                           <img 
                             src={article.thumbnail} 
                             alt={article.title}
                             loading="lazy"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
                           />
                         </div>
                       )}
@@ -668,7 +1134,19 @@ export default function HomePage() {
                       >
                         {article.platform}
                       </span>
-                      <span className="article-category">
+                      <span 
+                        className="article-category-badge"
+                        style={{ 
+                          display: 'inline-block',
+                          marginLeft: '0.5rem',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: 'rgba(255, 255, 255, 0.15)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
+                        }}
+                      >
                         {article.category}
                       </span>
                       <h3 className="article-title">{article.title}</h3>
@@ -677,9 +1155,16 @@ export default function HomePage() {
                         {new Date(article.publishedAt).toLocaleDateString('ja-JP')}
                       </p>
                     </div>
-                  ))}
-                </div>
-              </>
+                  ))
+                ) : (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', opacity: 0.6 }}>
+                    {searchQuery || selectedCategory !== '全て' || selectedPlatform !== '全て' 
+                      ? '条件に一致する記事が見つかりませんでした' 
+                      : '記事が見つかりませんでした'}
+                  </div>
+                )}
+              </div>
+            </>
             )}
           </div>
         </section>
@@ -687,8 +1172,8 @@ export default function HomePage() {
 
       <footer>
         <p>© 2025 AI Art Studio - Crystal Dreamscape</p>
-        <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', opacity: 0.8 }}>
-          ⚡ Performance First | Next.js Optimized
+        <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+          🌸 Performance Optimized | Canvas API (Optional)
         </p>
       </footer>
     </>
