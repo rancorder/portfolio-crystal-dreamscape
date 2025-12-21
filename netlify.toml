@@ -1,0 +1,50 @@
+# netlify.toml - Netlify完全対応版
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "18.20.0"
+  NPM_VERSION = "9"
+  NPM_FLAGS = "--legacy-peer-deps"
+  NEXT_TELEMETRY_DISABLED = "1"
+  NODE_OPTIONS = "--max-old-space-size=4096"
+
+# Next.js Plugin（必須）
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Functions設定
+[functions]
+  node_bundler = "esbuild"
+  
+# API Routes の明示的なリダイレクト
+[[redirects]]
+  from = "/api/articles"
+  to = "/.netlify/functions/___netlify-handler"
+  status = 200
+  force = false
+  
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/___netlify-handler"
+  status = 200
+  force = false
+
+# CORS設定
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Accept"
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=7200"
+
+# セキュリティヘッダー
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
