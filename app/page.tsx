@@ -1,9 +1,20 @@
-// app/page.tsx - 相対パス版
-'use client';
+// app/page.tsx
+import type { Metadata, Viewport } from 'next'
 
-import Link from 'next/link';
-import { projects } from '../data/projects';
-import { SeasonalCanvas } from '../components/SeasonalCanvas';
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#000000',
+}
+
+export const metadata: Metadata = {
+  title: 'Home | ひろしまいける Portfolio',
+  description: '製造業PM17年 × フルスタック実装 | エンタープライズ折衝からコード実装まで一気通貫',
+  openGraph: {
+    title: 'ひろしまいける Portfolio',
+    description: '製造業PM17年 × フルスタック実装',
+  },
+}
 
 export default function HomePage() {
   return (
