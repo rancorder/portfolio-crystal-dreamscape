@@ -102,7 +102,7 @@ export default function BlogPage() {
         
         const fetchers = [
           fetchQiita('rancorder'),
-          fetchViaProxy('https://zenn.dev/rancorder/feed', 'Zenn'),
+          fetchViaProxy('https://zenn.dev/supermassu/feed', 'Zenn'),
           fetchViaProxy('https://note.com/rancorder/rss', 'note'),
         ];
         
