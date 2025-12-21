@@ -18,7 +18,7 @@ export default function ContactPage() {
     e.preventDefault();
     
     // 簡易送信（実際はFormspreeやメールサービスと連携）
-    const mailtoLink = `mailto:your-email@example.com?subject=【問い合わせ】${formData.service || '一般'}&body=名前: ${formData.name}%0D%0Aメール: ${formData.email}%0D%0A会社名: ${formData.company}%0D%0Aサービス: ${formData.service}%0D%0A%0D%0Aメッセージ:%0D%0A${formData.message}`;
+    const mailtoLink = `mailto:xzengbu@gmail.com?subject=【問い合わせ】${formData.service || '一般'}&body=名前: ${formData.name}%0D%0Aメール: ${formData.email}%0D%0A会社名: ${formData.company}%0D%0Aサービス: ${formData.service}%0D%0A%0D%0Aメッセージ:%0D%0A${formData.message}`;
     
     window.location.href = mailtoLink;
     setSubmitted(true);
