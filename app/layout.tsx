@@ -1,4 +1,4 @@
-// app/layout.tsx - 修正版
+// app/layout.tsx - 完全修正版
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Analytics } from '@/components/Analytics'
@@ -6,23 +6,65 @@ import { Analytics } from '@/components/Analytics'
 export const metadata: Metadata = {
   metadataBase: new URL('https://portfolio-crystal-dreamscape.vercel.app'),
   
-  title: 'AI Art Studio - プロが教えるAI画像生成の極意 | 広島発',
-  description: 'AI画像生成のプロ集団が運営。Midjourney、Stable Diffusion、DALL-Eの実践テクニック、プロンプト作成の秘訣、企業導入事例を完全公開。',
+  title: {
+    default: 'rancorder テック記事 | AI・フロントエンド・スクレイピング',
+    template: '%s | rancorder テック記事'
+  },
   
-  keywords: ['AI画像生成', 'Midjourney', 'Stable Diffusion', 'プロンプト', 'Crystal Dreamscape'],
+  description: 'AI画像生成、プロンプトエンジニアリング、Next.js実装など、実践的な技術記事を自動集積。Zenn・Qiita・noteから最新情報をお届け。',
+  
+  keywords: [
+    'AI', 'AI画像生成', 'Midjourney', 'Stable Diffusion', 
+    'プロンプト', 'Next.js', 'React', 'フロントエンド',
+    'スクレイピング', 'Python', 'TypeScript'
+  ],
+  
+  authors: [{ name: 'rancorder' }],
+  
+  // ★★★ 致命的修正：robots設定 ★★★
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   
   openGraph: {
     type: 'website',
     locale: 'ja_JP',
     url: 'https://portfolio-crystal-dreamscape.vercel.app/',
-    siteName: 'AI Art Studio',
-    title: 'AI Art Studio - AI画像生成の総合メディア',
-    description: 'プロが教えるAI画像生成テクニック完全ガイド',
+    siteName: 'rancorder テック記事',
+    title: 'rancorder テック記事 | AI・フロントエンド技術情報',
+    description: 'AI画像生成、プロンプト、Next.js実装の実践記事集',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'rancorder テック記事',
+      },
+    ],
   },
   
-  robots: {
-    index: true,
-    follow: true,
+  twitter: {
+    card: 'summary_large_image',
+    title: 'rancorder テック記事',
+    description: 'AI・フロントエンド・スクレイピング技術情報',
+    images: ['/og-image.png'],
+  },
+  
+  verification: {
+    google: 'YOUR_GOOGLE_VERIFICATION_CODE', // Google Search Console設定後に追加
+  },
+  
+  alternates: {
+    canonical: 'https://portfolio-crystal-dreamscape.vercel.app/',
   },
 }
 
