@@ -1056,12 +1056,19 @@ export default function HomePage() {
                       className="article-card glass"
                       onClick={() => window.open(article.url, '_blank')}
                     >
-                      {(article.thumbnail && article.platform !== 'note') && (
+                     {article.thumbnail && article.platform !== 'note' && (
                         <div className="article-thumbnail">
                           <img 
                             src={article.thumbnail} 
                             alt={article.title}
+                            width={350}
+                            height={200}
                             loading="lazy"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                             }}
