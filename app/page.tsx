@@ -1,4 +1,4 @@
-// app/page.tsx - CORS回避版（桜吹雪）
+// app/page.tsx - SEO + CLS完全対応版
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,7 +12,7 @@ interface Article {
   publishedAt: string;
   platform: 'Zenn' | 'Qiita' | 'note';
   thumbnail?: string;
-  category?: string; // 自動判定カテゴリー
+  category?: string;
 }
 
 export default function HomePage() {
@@ -26,37 +26,30 @@ export default function HomePage() {
   const categorizeArticle = (article: Article): string => {
     const text = (article.title + ' ' + article.excerpt).toLowerCase();
     
-    // AI（最優先でチェック）
     if (/ai|人工知能|機械学習|machine learning|深層学習|deep learning|llm|gpt|claude|chatgpt|gemini|openai|anthropic|transformer|ニューラルネットワーク|neural network|自然言語処理|nlp/.test(text)) {
       return 'AI';
     }
     
-    // 画像生成
     if (/画像生成|image generation|stable diffusion|midjourney|dall-e|dalle|画像ai|生成ai|text to image|img2img|diffusion|画像合成|ai art|ai イラスト/.test(text)) {
       return '画像生成';
     }
     
-    // プロンプト
     if (/プロンプト|prompt|プロンプトエンジニアリング|prompt engineering|プロンプトデザイン|few-shot|zero-shot|chain of thought|cot|プロンプト設計|指示文/.test(text)) {
       return 'プロンプト';
     }
     
-    // スクレイピング（キーワード大幅強化）
     if (/スクレイピング|scraping|scrape|クローリング|crawling|crawler|beautiful soup|beautifulsoup|bs4|scrapy|selenium|puppeteer|playwright|cheerio|web scraping|データ収集|データ抽出|自動収集|webクローラー|クローラー|データ取得|情報収集|サイト解析/.test(text)) {
       return 'スクレイピング';
     }
     
-    // フロントエンド
     if (/react|next\.?js|vue|nuxt|typescript|javascript|css|html|tailwind|framer|sass|scss|frontend|ui|ux|styled|emotion|component|hooks|フロントエンド|フロント/.test(text)) {
       return 'フロントエンド';
     }
     
-    // バックエンド
     if (/node\.?js|express|api|database|sql|mongodb|postgresql|graphql|backend|server|prisma|nest\.?js|rest|fastapi|django|flask|バックエンド|サーバー|データベース|db/.test(text)) {
       return 'バックエンド';
     }
     
-    // インフラ
     if (/docker|kubernetes|aws|gcp|azure|ci\/cd|terraform|github actions|vercel|netlify|deploy|infra|container|k8s|cloudformation|インフラ|デプロイ|クラウド/.test(text)) {
       return 'インフラ';
     }
@@ -71,37 +64,26 @@ export default function HomePage() {
       category: categorizeArticle(article)
     }));
     
-    // デバッグ: カテゴリー分類結果をログ出力
-    if (articlesWithCategory.length > 0) {
-      console.log('[カテゴリー分類結果]');
-      articlesWithCategory.forEach(article => {
-        console.log(`${article.title.substring(0, 30)}... → ${article.category}`);
-      });
-    }
-    
     return articlesWithCategory.filter(article => {
-        // カテゴリーフィルター
-        if (selectedCategory !== '全て' && article.category !== selectedCategory) {
+      if (selectedCategory !== '全て' && article.category !== selectedCategory) {
+        return false;
+      }
+      
+      if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) {
+        return false;
+      }
+      
+      if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase();
+        const matchTitle = article.title.toLowerCase().includes(query);
+        const matchExcerpt = article.excerpt.toLowerCase().includes(query);
+        if (!matchTitle && !matchExcerpt) {
           return false;
         }
-        
-        // プラットフォームフィルター
-        if (selectedPlatform !== '全て' && article.platform !== selectedPlatform) {
-          return false;
-        }
-        
-        // 検索フィルター
-        if (searchQuery.trim() !== '') {
-          const query = searchQuery.toLowerCase();
-          const matchTitle = article.title.toLowerCase().includes(query);
-          const matchExcerpt = article.excerpt.toLowerCase().includes(query);
-          if (!matchTitle && !matchExcerpt) {
-            return false;
-          }
-        }
-        
-        return true;
-      });
+      }
+      
+      return true;
+    });
   }, [articles, selectedCategory, selectedPlatform, searchQuery]);
 
   // カテゴリー別記事数カウント
@@ -272,7 +254,7 @@ export default function HomePage() {
     };
   }, []);
 
-  // 記事取得（CORS回避版）
+  // 記事取得
   useEffect(() => {
     const fetchArticles = async () => {
       try {
@@ -306,7 +288,6 @@ export default function HomePage() {
     fetchArticles();
   }, []);
 
-  // Qiita取得（直接）
   async function fetchQiita(username: string): Promise<Article[]> {
     try {
       const res = await fetch(`https://qiita.com/api/v2/users/${username}/items?per_page=10`);
@@ -319,7 +300,7 @@ export default function HomePage() {
         excerpt: item.body.substring(0, 150) + '...',
         publishedAt: item.created_at,
         platform: 'Qiita' as const,
-        thumbnail: item.user?.profile_image_url || undefined, // サムネイル
+        thumbnail: item.user?.profile_image_url || undefined,
       }));
     } catch (error) {
       console.error('[Qiita] Error:', error);
@@ -327,7 +308,6 @@ export default function HomePage() {
     }
   }
 
-  // RSS→JSONプロキシ経由取得
   async function fetchViaProxy(rssUrl: string, platform: 'Zenn' | 'note'): Promise<Article[]> {
     try {
       const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
@@ -345,33 +325,24 @@ export default function HomePage() {
           .replace(/&nbsp;/g, ' ')
           .trim();
         
-        // サムネイル画像を抽出（複数パターン対応）
         let thumbnail: string | undefined;
         
-        // 1. thumbnail フィールド
         if (item.thumbnail) {
           thumbnail = item.thumbnail;
-        }
-        // 2. enclosure.link
-        else if (item.enclosure?.link) {
+        } else if (item.enclosure?.link) {
           thumbnail = item.enclosure.link;
-        }
-        // 3. content から抽出（note用）
-        else if (item.content) {
+        } else if (item.content) {
           const imgMatch = item.content.match(/<img[^>]+src=["']([^"']+)["']/i);
           if (imgMatch) {
             thumbnail = imgMatch[1];
           }
-        }
-        // 4. description から抽出
-        else if (item.description) {
+        } else if (item.description) {
           const imgMatch = item.description.match(/<img[^>]+src=["']([^"']+)["']/i);
           if (imgMatch) {
             thumbnail = imgMatch[1];
           }
         }
         
-        // noteの場合、assets.st-note.comのURLを確認
         if (platform === 'note' && thumbnail && !thumbnail.startsWith('http')) {
           thumbnail = `https://assets.st-note.com${thumbnail}`;
         }
@@ -392,7 +363,6 @@ export default function HomePage() {
     }
   }
 
-  // プラットフォーム別カラー
   const getPlatformColor = (platform: string) => {
     switch (platform) {
       case 'Zenn': return 'linear-gradient(135deg, #3EA8FF, #50C0FF)';
@@ -404,6 +374,33 @@ export default function HomePage() {
 
   return (
     <>
+      {/* 構造化データ（JSON-LD） */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Blog",
+            "name": "rancorder テック記事",
+            "description": "AI・フロントエンド・スクレイピング技術情報",
+            "url": "https://portfolio-crystal-dreamscape.vercel.app/",
+            "author": {
+              "@type": "Person",
+              "name": "rancorder",
+              "url": "https://github.com/rancorder"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "Crystal Studio",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://portfolio-crystal-dreamscape.vercel.app/favicon.svg"
+              }
+            }
+          })
+        }}
+      />
+
       <style jsx global>{`
         * {
           margin: 0;
@@ -452,7 +449,6 @@ export default function HomePage() {
           z-index: 1;
         }
 
-        /* 冬の装飾 */
         body::after {
           content: '⛄';
           position: fixed;
@@ -470,7 +466,6 @@ export default function HomePage() {
           50% { transform: translateY(-20px); }
         }
 
-        /* 追加の雪だるま（左上） */
         .winter-decoration-left {
           position: fixed;
           top: 10%;
@@ -483,7 +478,6 @@ export default function HomePage() {
           animation-delay: 1s;
         }
 
-        /* 冬の木（右中央） */
         .winter-decoration-tree {
           position: fixed;
           top: 50%;
@@ -496,7 +490,6 @@ export default function HomePage() {
           animation-delay: 2s;
         }
 
-        /* モバイルでは小さく */
         @media (max-width: 768px) {
           body::after {
             font-size: 4rem;
@@ -683,6 +676,7 @@ export default function HomePage() {
         .article-thumbnail {
           width: 100%;
           height: 200px;
+          min-height: 200px;
           margin-bottom: 1.5rem;
           border-radius: 16px;
           overflow: hidden;
@@ -745,7 +739,6 @@ export default function HomePage() {
           font-size: 1.2rem;
         }
 
-        /* フィルターセクション */
         .filter-section {
           margin-bottom: 3rem;
           padding: 2rem;
@@ -855,6 +848,7 @@ export default function HomePage() {
           
           .article-thumbnail {
             height: 150px;
+            min-height: 150px;
             margin-bottom: 1rem;
             border-radius: 12px;
           }
@@ -909,7 +903,6 @@ export default function HomePage() {
             font-size: 0.9rem;
           }
 
-          /* フィルターのモバイル対応 */
           .filter-section {
             padding: 1.5rem;
           }
@@ -934,7 +927,6 @@ export default function HomePage() {
         }
       `}</style>
 
-      {/* 冬の装飾 */}
       <div className="winter-decoration-left">⛄</div>
       <div className="winter-decoration-tree">🎄</div>
 
@@ -946,7 +938,7 @@ export default function HomePage() {
           <ul className="nav-links">
             <li><a href="#home">Home</a></li>
             <li><a href="#blog">Blog</a></li>
-            <li><a href="https://github.com/rancorder" target="_blank">GitHub</a></li>
+            <li><a href="https://github.com/rancorder" target="_blank" rel="noopener noreferrer">GitHub</a></li>
           </ul>
         </nav>
       </header>
@@ -970,9 +962,7 @@ export default function HomePage() {
               <div className="loading">記事を読み込み中...</div>
             ) : (
               <>
-                {/* フィルターセクション */}
                 <div className="filter-section">
-                  {/* 検索ボックス */}
                   <div className="filter-group">
                     <label className="filter-label">🔍 記事を検索</label>
                     <input
@@ -984,7 +974,6 @@ export default function HomePage() {
                     />
                   </div>
 
-                  {/* カテゴリーフィルター */}
                   <div className="filter-group">
                     <label className="filter-label">📂 カテゴリー</label>
                     <div className="filter-buttons">
@@ -1000,7 +989,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* プラットフォームフィルター */}
                   <div className="filter-group">
                     <label className="filter-label">🌐 プラットフォーム</label>
                     <div className="filter-buttons">
@@ -1016,7 +1004,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* 検索結果数 */}
                   <div className="results-count">
                     {filteredArticles.length > 0 ? (
                       <>{filteredArticles.length}件の記事を表示中</>
@@ -1047,7 +1034,6 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* 記事一覧 */}
                 <div className="articles-grid">
                   {filteredArticles.length > 0 ? (
                     filteredArticles.map(article => (
@@ -1056,7 +1042,7 @@ export default function HomePage() {
                       className="article-card glass"
                       onClick={() => window.open(article.url, '_blank')}
                     >
-                     {article.thumbnail && article.platform !== 'note' && (
+                      {article.thumbnail && article.platform !== 'note' && (
                         <div className="article-thumbnail">
                           <img 
                             src={article.thumbnail} 
@@ -1081,7 +1067,6 @@ export default function HomePage() {
                       >
                         {article.platform}
                       </span>
-                      {/* カテゴリーバッジ追加 */}
                       <span 
                         className="article-category-badge"
                         style={{ 
