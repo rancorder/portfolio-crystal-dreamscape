@@ -1,4 +1,4 @@
-// app/layout.tsx - 完全修正版
+// app/layout.tsx - SEO完全対応版
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Analytics } from '@/components/Analytics'
@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   ],
   
   authors: [{ name: 'rancorder' }],
+  creator: 'rancorder',
+  publisher: 'Crystal Studio',
   
   // ★★★ 致命的修正：robots設定 ★★★
   robots: {
@@ -57,10 +59,6 @@ export const metadata: Metadata = {
     title: 'rancorder テック記事',
     description: 'AI・フロントエンド・スクレイピング技術情報',
     images: ['/og-image.png'],
-  },
-  
-  verification: {
-    google: 'YOUR_GOOGLE_VERIFICATION_CODE', // Google Search Console設定後に追加
   },
   
   alternates: {
