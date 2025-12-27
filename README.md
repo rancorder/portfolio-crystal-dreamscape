@@ -40,7 +40,7 @@
 
 ```bash
 # リポジトリクローン
-git clone https://github.com/rancorder/portfolio-nextjs.git
+git clone https://github.com/rancorder/portfolio-crystal-dreamscape.git
 cd portfolio-nextjs
 
 # 依存関係インストール
@@ -219,3 +219,4 @@ MIT License - 自由に使用・改変可能
 ---
 
 **Made with 💎 Crystal Dreamscape by AI Art Studio**
+
